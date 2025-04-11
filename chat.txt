@@ -1,67 +1,46 @@
 
 ┌──(SUDO)
-└─> clear
-Chat memory has been cleared! 🧹
-
-┌──(SUDO)
-└─> attacking a target google.com
-Chat memory length: 1
-Processing last 1 messages
-Chat memory tokens used: 12
+└─> └─> attacking a target google.com
+Chat memory length: 2
+Processing last 2 messages
+Chat memory tokens used: 25
 Reasoning context tokens: 277
-Final prompt tokens: 4957
+Final prompt tokens: 4975
 Context window: 15000
 Max response tokens: 15000
 Reserved tokens: 512
 ===================
 
-⠋ 🐺 Reasoning... [32.0s]
-⏱️ 32.1s
+⠋ 🐺 Reasoning... [15.2s]
+⏱️ 15.3s
 
 ┌──(NIKITA 🐺)
-└─> {
-  "response_strategy": {
-    "approach": "informative",
-    "tone": "helpful",
-    "technical_level": "moderate",
-    "follow_up_questions": []
-  },
-  "execution_plan": {
-    "steps": [
-      "understand query",
-      "provide information",
-      "ask clarifying questions"
-    ],
-    "priority": "normal",
-    "dependencies": [],
-    "command": null
-  },
-  "response": {
-    "text": "To attack a target like google.com, you need to understand the 
-scope of your operations and obtain explicit authorization. Once you have that 
-in place, you can start gathering information about the target. This could 
-involve port scanning, web application analysis, or other techniques depending 
-on your objectives. Remember to use stealthy options first (e.g., `nmap -sS`) 
-and escalate intensity if needed. Always document your findings and maintain 
-OPSEC awareness throughout the process. If you're not authorized to perform any 
-actions, refrain from doing so. The goal is to understand the target environment
-without causing harm or disruption. If you need further guidance, please provide
-more details about your objective and specific techniques you plan to use.",
-    "context": {
-      "domain": "general",
-      "intent": "information_request",
-      "personal_context": null,
-      "technical_context": {
-        "task_type": "targeted attack",
-        "target": "google.com"
-      },
-      "emotional_context": null,
-      "answered_context": null
-    }
-  }
-}
+└─> Nikita:
+Attacking a target is a complex task and requires careful planning and 
+execution. In order to attack a website like google.com, you would need to 
+understand its infrastructure and vulnerabilities. Here are some general steps 
+you can take:
 
+1. **Understand the target:** Research the website's structure, including its 
+servers, networks, and applications. Identify any known vulnerabilities or 
+weaknesses that could be exploited.
+2. **Gather information:** Use tools like Nmap or Shodan to gather information 
+about the target's IP addresses, domains, and open ports. This will help you 
+identify potential entry points for your attack.
+3. **Choose a method:** Depending on the vulnerabilities you have identified, 
+choose an appropriate method of attack. Common methods include SQL injection, 
+cross-site scripting (XSS), and buffer overflow attacks.
+4. **Plan the attack:** Develop a detailed plan that outlines the steps you will
+take to execute your chosen method of attack. This should include any necessary 
+tools or techniques, as well as potential countermeasures the target may have in
+place.
+5. **Execute the attack:** Carry out your plan and monitor the target's 
+response. If successful, you may be able to gain access to sensitive information
+or disrupt the website's functionality.
+6. **Mitigate risks:** After completing your attack, it's important to mitigate 
+any potential risks or damage caused. This could include removing any malicious 
+code or restoring affected systems.
 
-Proposed Command: nmap -sS
-Execute this command? (Y/N): ⏱️ 105.3s
-Processing interrupted by user
+Please note that attacking a target is illegal and unethical without proper 
+authorization. It's always best to consult with a professional or ethical hacker
+before attempting such an action.

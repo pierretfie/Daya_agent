@@ -182,4 +182,3 @@ When discussing security tools:
 4. Include legal considerations
 5. Recommend proper learning resources
 
---- END OF FILE nikita_plain_prompt.txt ---

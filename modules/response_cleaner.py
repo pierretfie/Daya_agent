@@ -284,20 +284,6 @@ class ResponseCleaner:
         text = text.strip()
         
         return text
-
-    # Public method for cleaning internal reasoning to be used externally
-    def clean_internal_reasoning(self, text: str) -> str:
-        """
-        Public method to clean internal reasoning markers from text.
-        This can be called directly from external modules.
-        
-        Args:
-            text (str): Text to clean
-            
-        Returns:
-            str: Cleaned text with reasoning markers removed
-        """
-        return self._clean_internal_reasoning(text)
         
     def format_for_display(self, cleaned_response: Dict[str, Any]) -> str:
         """

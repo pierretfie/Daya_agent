@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from rich.console import Console
 import shlex
-from documentation_verifier import DocumentationVerifier
+from .documentation_verifier import DocumentationVerifier
 
 console = Console()
 

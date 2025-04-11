@@ -20,6 +20,26 @@ class ResponseCleaner:
         """Initialize the response cleaner"""
         self.json_pattern = re.compile(r'^\s*\{.*\}\s*$', re.DOTALL)
         self.command_pattern = re.compile(r'```(?:\w+)?\s*([^`]+)```|`([^`]+)`')
+        
+        # Role prefixes to clean from responses
+        self.role_prefixes = [
+            r'^\s*Nikita\s*:\s*',
+            r'^\s*NIKITA\s*:\s*',
+            r'^\s*Assistant\s*:\s*',
+            r'^\s*ASSISTANT\s*:\s*',
+            r'^\s*User\s*:\s*',
+            r'^\s*USER\s*:\s*',
+            r'^\s*Human\s*:\s*',
+            r'^\s*HUMAN\s*:\s*',
+            r'^\s*AI\s*:\s*',
+            r'^\s*System\s*:\s*',
+            r'^\s*SYSTEM\s*:\s*'
+        ]
+        
+        # Compile role prefix patterns for efficiency
+        self.role_prefix_patterns = [re.compile(pattern) for pattern in self.role_prefixes]
+        
+        # Metadata sections to extract
         self.metadata_sections = [
             "response_strategy", "execution_plan", "context", "reasoning",
             "technical_context", "emotional_context", "personal_context",
@@ -113,8 +133,8 @@ class ResponseCleaner:
         if not clean_text:
             clean_text = "I apologize, but I couldn't format my response properly. Here's the raw data:\n\n" + json.dumps(json_data, indent=2)
             
-        # Remove any "Nikita:" header from the beginning of the response
-        clean_text = re.sub(r'^\s*Nikita\s*:\s*', '', clean_text)
+        # Remove any role prefixes from the beginning of the response
+        clean_text = self._remove_role_prefixes(clean_text)
             
         # Extract metadata
         for section in self.metadata_sections:
@@ -132,8 +152,8 @@ class ResponseCleaner:
         
     def _process_text_response(self, text: str) -> Dict[str, Any]:
         """Process a plain text response"""
-        # Remove any "Nikita:" header from the beginning of the response
-        text = re.sub(r'^\s*Nikita\s*:\s*', '', text)
+        # Remove any role prefixes from the beginning of the response
+        text = self._remove_role_prefixes(text)
         
         # Split into lines for processing
         lines = text.split('\n')
@@ -212,6 +232,27 @@ class ResponseCleaner:
                 
         return commands
         
+    def _remove_role_prefixes(self, text: str) -> str:
+        """Remove role prefixes from text"""
+        if not text:
+            return text
+            
+        # Apply all role prefix patterns
+        for pattern in self.role_prefix_patterns:
+            text = pattern.sub('', text)
+            
+        # Also handle multi-line responses with role prefixes
+        lines = text.split('\n')
+        cleaned_lines = []
+        
+        for line in lines:
+            cleaned_line = line
+            for pattern in self.role_prefix_patterns:
+                cleaned_line = pattern.sub('', cleaned_line)
+            cleaned_lines.append(cleaned_line)
+            
+        return '\n'.join(cleaned_lines)
+        
     def format_for_display(self, cleaned_response: Dict[str, Any]) -> str:
         """
         Format the cleaned response for display to the user.
@@ -224,9 +265,8 @@ class ResponseCleaner:
         """
         clean_text = cleaned_response['clean_text']
         
-        # Final cleanup to ensure no agent headers remain
-        clean_text = re.sub(r'^\s*Nikita\s*:\s*', '', clean_text)
-        clean_text = re.sub(r'^\s*NIKITA\s*:\s*', '', clean_text)
+        # Final cleanup to ensure no role prefixes remain
+        clean_text = self._remove_role_prefixes(clean_text)
         
         return clean_text
 

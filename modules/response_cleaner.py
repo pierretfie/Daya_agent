@@ -48,7 +48,7 @@ class ResponseCleaner:
         
     def clean_response(self, response):
         """Clean and format the response"""
-        # Remove internal reasoning markers
+        # Remove internal reasoning markers but preserve process steps
         response = re.sub(r'--- As Nikita, ---\n', '', response)
         response = re.sub(r'1\.\s+Understand the query:.*?\n', '', response, flags=re.DOTALL)
         response = re.sub(r'1\.\s+Provide information:.*?\n', '', response, flags=re.DOTALL)
@@ -63,6 +63,14 @@ class ResponseCleaner:
         response = re.sub(r'Reasoning:.*?\n', '', response, flags=re.DOTALL)
         response = re.sub(r'Analysis:.*?\n', '', response, flags=re.DOTALL)
         response = re.sub(r'Thought process:.*?\n', '', response, flags=re.DOTALL)
+        
+        # Preserve process steps and commands
+        # Convert numbered steps to bullet points for better readability
+        response = re.sub(r'(\d+)\.\s+', r'• ', response)
+        
+        # Ensure commands are properly formatted
+        response = re.sub(r'`([^`]+)`', r'`\1`', response)
+        response = re.sub(r'```(?:\w+)?\s*([^`]+)```', r'`\1`', response)
         
         # Clean up any resulting double newlines
         response = re.sub(r'\n\s*\n', '\n\n', response)
@@ -83,6 +91,9 @@ class ResponseCleaner:
         # Remove any remaining internal markers
         response = re.sub(r'\[Internal\]\s*', '', response)
         response = re.sub(r'\[Reasoning\]\s*', '', response)
+        
+        # Format commands for better visibility
+        response = re.sub(r'`([^`]+)`', r'[bold cyan]\1[/bold cyan]', response)
         
         # Ensure response ends with a single newline
         response = response.rstrip() + '\n'

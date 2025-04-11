@@ -647,19 +647,67 @@ def confirm_and_run_command(cmd):
             console.print(f"[green]Executing command...[/green]")
             output = run_command(cmd) # Use the existing run_command function
             
-            # Get suggestions from fine-tuning knowledge base
+            # After command execution, continue the response flow with additional information
             if output:
-                suggestions = fine_tuning.suggest_next_steps(cmd, output)
-                if suggestions:
-                    console.print("\n[bold cyan]Suggested next steps:[/bold cyan]")
-                    for suggestion in suggestions:
-                        if suggestion['command']:
-                            console.print(f"[yellow]• {suggestion['purpose']}[/yellow] using [green]{suggestion['command']}[/green] ({suggestion['relevance']})")
-                        else:
-                            console.print(f"[yellow]• {suggestion['purpose']}[/yellow] ({suggestion['relevance']})")
-                    console.print()
+                # Generate a follow-up response based on the command output
+                follow_up_prompt = f"""
+You are Nikita, an AI Security Assistant. The user ran the command '{cmd}' and got the following output:
+
+{output[:500]}... (output truncated for brevity)
+
+Based on this output, provide:
+1. A brief analysis of what this output means
+2. Suggested next steps or commands that would logically follow
+3. Any security insights relevant to this output
+
+Keep your response concise and actionable. Focus on the most important insights.
+"""
+                follow_up_output = get_cached_response(follow_up_prompt, max_tokens=200, temperature=0.3, prompt_type='basic')
+                follow_up_response = follow_up_output['choices'][0]['text'].strip()
+                
+                # Clean the follow-up response
+                cleaned_follow_up = response_cleaner._clean_internal_reasoning(follow_up_response)
+                
+                # Display the follow-up response in a different format
+                console.print("\n[bold magenta]┌──(INSIGHTS)[/bold magenta]")
+                console.print(f"[bold magenta]└─>[/bold magenta] {cleaned_follow_up}")
+                console.print() # Add an empty line after output for better readability
+            
+            # Get suggestions from fine-tuning knowledge base
+            suggestions = fine_tuning.suggest_next_steps(cmd, output)
+            if suggestions:
+                console.print("\n[bold cyan]Suggested next steps:[/bold cyan]")
+                for suggestion in suggestions:
+                    if suggestion['command']:
+                        console.print(f"[yellow]• {suggestion['purpose']}[/yellow] using [green]{suggestion['command']}[/green] ({suggestion['relevance']})")
+                    else:
+                        console.print(f"[yellow]• {suggestion['purpose']}[/yellow] ({suggestion['relevance']})")
+                console.print()
         else:
             console.print("[yellow]Command execution skipped by user.[/yellow]")
+            
+            # Even if command is skipped, provide hypothetical insights
+            hypothetical_prompt = f"""
+You are Nikita, an AI Security Assistant. The user considered running the command '{cmd}' but decided not to execute it.
+
+Provide:
+1. A brief explanation of what this command would have done
+2. Alternative approaches that might achieve similar goals
+3. Any security considerations to be aware of
+
+Keep your response concise and informative.
+"""
+            hyp_output = get_cached_response(hypothetical_prompt, max_tokens=150, temperature=0.3, prompt_type='basic')
+            hyp_response = hyp_output['choices'][0]['text'].strip()
+            
+            # Clean the hypothetical response
+            cleaned_hyp = response_cleaner._clean_internal_reasoning(hyp_response)
+            
+            # Display the hypothetical insights
+            console.print("\n[bold blue]┌──(ALTERNATIVE INSIGHTS)[/bold blue]")
+            console.print(f"[bold blue]└─>[/bold blue] {cleaned_hyp}")
+            console.print() # Add an empty line after output for better readability
+            
     except EOFError:
         console.print("\n[yellow]Input stream closed. Command execution skipped.[/yellow]")
     except Exception as e:

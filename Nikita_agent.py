@@ -1009,20 +1009,26 @@ def main():
                         # Ask for confirmation for non-help commands
                         confirm_and_run_command(cmd)
                 
-                # Save the response to chat memory in background
-                def save_response_to_memory():
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    chat_memory.append({
-                        "role": "assistant",
-                        "content": response,
-                        "timestamp": timestamp,
-                        "reasoning_context": reasoning_result.get("reasoning", {}),
-                        "follow_up_questions": reasoning_result.get("follow_up_questions", [])
-                    })
-                    save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
+                # Save the response to chat memory immediately to ensure conversation continuity
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                chat_memory.append({
+                    "role": "assistant",
+                    "content": clean_response,  # Save the cleaned response, not the raw one
+                    "timestamp": timestamp,
+                    "reasoning_context": reasoning_result.get("reasoning", {}),
+                    "follow_up_questions": reasoning_result.get("follow_up_questions", [])
+                })
+                
+                # Save chat history in background to avoid blocking
+                def save_history_in_background():
+                    try:
+                        save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
+                        print(f"Debug: Saved chat history with {len(chat_memory)} messages")
+                    except Exception as e:
+                        print(f"Debug: Error saving chat history: {e}")
                 
                 # Execute save in background to avoid blocking
-                executor.submit(save_response_to_memory)
+                executor.submit(save_history_in_background)
         except KeyboardInterrupt:
             # Make sure to stop the timer if it exists in this scope
             if 'timer_running' in locals():

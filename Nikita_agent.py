@@ -1066,14 +1066,18 @@ def main():
 
     # Explicitly clean up resources before exit
     print("Cleaning up resources...")
-    # Try closing llama object first
+    # Clean up llama object first
     if 'llm' in globals() and llm is not None:
         try:
-            print("Closing Llama model...")
-            llm.close() # Call the library's close method
-            print("Llama model closed.")
+            print("Releasing Llama model resources...")
+            # llama_cpp.Llama doesn't have a close() method, but we can help Python's GC
+            # by explicitly deleting the reference and forcing garbage collection
+            del llm
+            import gc
+            gc.collect()
+            print("Llama model resources released.")
         except Exception as e:
-            print(f"Error closing Llama model: {e}")
+            print(f"Error releasing Llama model resources: {e}")
         llm = None # Ensure reference is gone
     
     # Clean up GPU manager after Llama

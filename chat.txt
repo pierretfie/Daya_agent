@@ -1,186 +1,67 @@
 
 ┌──(SUDO)
-└─> what is an ip
-Chat memory length: 8
-Processing last 8 messages
-Chat memory tokens used: 1440
-Reasoning context tokens: 277
-Final prompt tokens: 6415
-Context window: 15000
-Max response tokens: 15000
-Reserved tokens: 2048
-===================
-
-⠴ 🐺 Reasoning... [37.1s]
-⏱️ 37.2s
-
-┌──(NIKITA 🐺)
-└─> An IP (Internet Protocol) address is a unique numerical label assigned to 
-every device connected to a network that uses the Internet Protocol for 
-communication. It serves two principal functions: host or network interface 
-identification and location addressing.
-IP addresses are binary numbers, but they are most often expressed in 
-human-readable notations, such as 172.217.5.6 or 2001:db8:0🔢0:567:8:1.
-There are two main versions of the Internet Protocol in use today: IPv4 and 
-IPv6. IPv4 addresses are 32-bit numbers, while IPv6 addresses are 128-bit 
-numbers. IPv6 was designed to address the limitations of IPv4, including its 
-address space exhaustion problem and its reliance on manually configured 
-addresses.
-IP addresses can be used to locate devices on a network or across the Internet. 
-They can also be used to identify specific services running on those devices, 
-such as web servers, email servers, and file transfer protocol (FTP) servers.
-In summary, an IP address is a unique numerical label assigned to every device 
-connected to a network that uses the Internet Protocol for communication. It 
-serves two principal functions: host or network interface identification and 
-location addressing. There are two main versions of the Internet Protocol in use
-today: IPv4 and IPv6.
-
+└─> clear
+Chat memory has been cleared! 🧹
 
 ┌──(SUDO)
-└─> basic what is an ip
-Chat memory length: 10
-Processing last 10 messages
-Chat memory tokens used: 1869
+└─> attacking a target google.com
+Chat memory length: 1
+Processing last 1 messages
+Chat memory tokens used: 12
 Reasoning context tokens: 277
-Final prompt tokens: 2777
+Final prompt tokens: 4957
 Context window: 15000
 Max response tokens: 15000
-Reserved tokens: 2048
+Reserved tokens: 512
 ===================
 
-⠴ 🐺 Reasoning... [21.9s]
-⏱️ 22.0s
+⠋ 🐺 Reasoning... [32.0s]
+⏱️ 32.1s
 
 ┌──(NIKITA 🐺)
-└─> An IP (Internet Protocol) address is a unique numerical label assigned to 
-every device connected to a network that uses the Internet Protocol for 
-communication. It serves two principal functions: host or network interface 
-identification and location addressing.
-IP addresses are binary numbers, but they are most often expressed in 
-human-readable notations, such as 172.217.5.6 or 2001:db8:0🔢0:567:8:1.
-There are two main versions of the Internet Protocol in use today: IPv4 and 
-IPv6. IPv4 addresses are 32-bit numbers, while IPv6 addresses are 128-bit 
-numbers. IPv6 was designed to address the limitations of IPv4, including its 
-address space exhaustion problem and its reliance on manually configured 
-addresses.
-IP addresses can be used to locate devices on a network or across the Internet. 
-They can also be used to identify specific services running on those devices, 
-such as web servers, email servers, and file transfer protocol (FTP) servers.
-In summary, an IP address is a unique numerical label assigned to every device 
-connected to a network that uses the Internet Protocol for communication. It 
-serves two principal functions: host or network interface identification and 
-location addressing. There are two main versions of the Internet Protocol in use
-today: IPv4 and IPv6.
+└─> {
+  "response_strategy": {
+    "approach": "informative",
+    "tone": "helpful",
+    "technical_level": "moderate",
+    "follow_up_questions": []
+  },
+  "execution_plan": {
+    "steps": [
+      "understand query",
+      "provide information",
+      "ask clarifying questions"
+    ],
+    "priority": "normal",
+    "dependencies": [],
+    "command": null
+  },
+  "response": {
+    "text": "To attack a target like google.com, you need to understand the 
+scope of your operations and obtain explicit authorization. Once you have that 
+in place, you can start gathering information about the target. This could 
+involve port scanning, web application analysis, or other techniques depending 
+on your objectives. Remember to use stealthy options first (e.g., `nmap -sS`) 
+and escalate intensity if needed. Always document your findings and maintain 
+OPSEC awareness throughout the process. If you're not authorized to perform any 
+actions, refrain from doing so. The goal is to understand the target environment
+without causing harm or disruption. If you need further guidance, please provide
+more details about your objective and specific techniques you plan to use.",
+    "context": {
+      "domain": "general",
+      "intent": "information_request",
+      "personal_context": null,
+      "technical_context": {
+        "task_type": "targeted attack",
+        "target": "google.com"
+      },
+      "emotional_context": null,
+      "answered_context": null
+    }
+  }
+}
 
 
-┌──(SUDO)
-└─> how to use hashcat
-Chat memory length: 10
-Processing last 10 messages
-Chat memory tokens used: 1392
-Reasoning context tokens: 277
-Final prompt tokens: 6372
-Context window: 15000
-Max response tokens: 15000
-Reserved tokens: 2048
-===================
-
-⠦ 🐺 Reasoning... [53.2s]
-⏱️ 53.3s
-
-┌──(NIKITA 🐺)
-└─> Hashcat is a powerful password cracking tool that can be used for both 
-password recovery and brute-force attacks. It supports a wide range of 
-algorithms and can be customized to target specific types of passwords or 
-systems.
-To use Hashcat, you will need to have it installed on your system. You can 
-download the latest version from the official website (<https://hashcat.net/>) 
-or from a trusted security community repository like GitHub.
-Once Hashcat is installed, you can run it using the command line interface 
-(CLI). Here's an example of how to use Hashcat for password cracking:
-```css
-hashcat -m 19000000 -a 65536 -t 4 -o - /path/to/wordlist.txt password.txt
-```
-Let's break down the command:
-* `-m 19000000`: This flag specifies the maximum number of combinations to try 
-(in this case, 19 million). You can adjust this value based on your available 
-resources and the complexity of the password you're trying to crack.
-* `-a 65536`: This flag sets the wordlist size to 65,536 bytes, which is a good 
-default value for most situations. You can adjust this value based on the size 
-of your wordlist or the complexity of the password you're trying to crack.
-* `-t 4`: This flag specifies the number of threads to use for parallel 
-processing. In this case, we're using four threads (you can adjust this value 
-based on the number of available cores on your system).
-* `-o -`: These flags tell Hashcat not to output anything during the cracking 
-process. If you want to see progress or results, remove these flags.
-* `/path/to/wordlist.txt password.txt`: These are the paths to your wordlist and
-the target password file, respectively.
-It's important to note that using Hashcat for brute-force attacks is generally 
-considered unethical and can be illegal in some jurisdictions. Always obtain 
-explicit permission before attempting any type of password cracking or 
-penetration testing. Additionally, it's crucial to use strong passwords and 
-implement appropriate security measures to protect your systems from such 
-attacks.
-If you have any further questions about using Hashcat or need assistance with a 
-specific task, feel free to ask.
-
-
-Proposed Command: css
-hashcat -m 19000000 -a 65536 -t 4 -o - /path/to/wordlist.txt password.txt
-Execute this command? (Y/N): n
-Command execution skipped by user.
-
-┌──(SUDO)
-└─> basic how to use hashcat
-Chat memory length: 10
-Processing last 10 messages
-Chat memory tokens used: 1674
-Reasoning context tokens: 277
-Final prompt tokens: 2583
-Context window: 15000
-Max response tokens: 15000
-Reserved tokens: 2048
-===================
-
-⠇ 🐺 Reasoning... [31.8s]
-⏱️ 31.9s
-
-┌──(NIKITA 🐺)
-└─> Hashcat is a powerful password cracking tool that can be used for both 
-password recovery and brute-force attacks. It supports a wide range of 
-algorithms and can be customized to target specific types of passwords or 
-systems. To use Hashcat, you will need to have it installed on your system. You 
-can download the latest version from the official website 
-(<https://hashcat.net/>) or from a trusted security community repository like 
-GitHub. Once Hashcat is installed, you can run it using the command line 
-interface (CLI). Here's an example of how to use Hashcat for password cracking:
-```css
-hashcat -m 19000000 -a 65536 -t 4 -o - /path/to/wordlist.txt password.txt
-```
-Let's break down the command:
-* `-m 19000000`: This flag specifies the maximum number of combinations to try 
-(in this case, 19 million). You can adjust this value based on your available 
-resources and the complexity of the password you're trying to crack.
-* `-a 65536`: This flag sets the wordlist size to 65,536 bytes, which is a good 
-default value for most situations. You can adjust this value based on the size 
-of your wordlist or the complexity of the password you're trying to crack.
-* `-t 4`: This flag specifies the number of threads to use for parallel 
-processing. In this case, we're using four threads (you can adjust this value 
-based on the number of available cores on your system).
-* `-o -`: These flags tell Hashcat not to output anything during the cracking 
-process. If you want to see progress or results, remove these flags.
-* `/path/to/wordlist.txt password.txt`: These are the paths to your wordlist and
-the target password file, respectively.
-It's important to note that using Hashcat for brute-force attacks is generally 
-considered unethical and can be illegal in some jurisdictions. Always obtain 
-explicit permission before attempting any type of password cracking or 
-penetration testing. Additionally, it's crucial to use strong passwords and 
-implement appropriate security measures to protect your systems from such 
-attacks.
-If you have any further questions about using Hashcat or need assistance with a 
-specific task, feel free to ask.
-
-
-Proposed Command: css
-hashcat -m 19000000 -a 65536 -t 4 -o - /path/to/wordlist.txt password.txt
-Execute this command? (Y/N): 
+Proposed Command: nmap -sS
+Execute this command? (Y/N): ⏱️ 105.3s
+Processing interrupted by user

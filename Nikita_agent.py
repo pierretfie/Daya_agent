@@ -1023,7 +1023,7 @@ def main():
                 def save_history_in_background():
                     try:
                         save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
-                        print(f"Debug: Saved chat history with {len(chat_memory)} messages")
+                        #print(f"Debug: Saved chat history with {len(chat_memory)} messages")
                     except Exception as e:
                         print(f"Debug: Error saving chat history: {e}")
                 

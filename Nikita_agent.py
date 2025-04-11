@@ -666,7 +666,7 @@ Keep your response concise and actionable. Focus on the most important insights.
                 follow_up_response = follow_up_output['choices'][0]['text'].strip()
                 
                 # Clean the follow-up response
-                cleaned_follow_up = response_cleaner._clean_internal_reasoning(follow_up_response)
+                cleaned_follow_up = response_cleaner.clean_internal_reasoning(follow_up_response)
                 
                 # Display the follow-up response in a different format
                 console.print("\n[bold magenta]┌──(INSIGHTS)[/bold magenta]")
@@ -701,7 +701,7 @@ Keep your response concise and informative.
             hyp_response = hyp_output['choices'][0]['text'].strip()
             
             # Clean the hypothetical response
-            cleaned_hyp = response_cleaner._clean_internal_reasoning(hyp_response)
+            cleaned_hyp = response_cleaner.clean_internal_reasoning(hyp_response)
             
             # Display the hypothetical insights
             console.print("\n[bold blue]┌──(ALTERNATIVE INSIGHTS)[/bold blue]")

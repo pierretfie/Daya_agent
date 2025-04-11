@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 from rich.console import Console
 import shlex
+from documentation_verifier import DocumentationVerifier
 
 console = Console()
 
@@ -25,6 +26,7 @@ class ToolManager:
         """
         self.fine_tuning_file = fine_tuning_file
         self.tool_cache = {}
+        self.documentation_verifier = DocumentationVerifier()
         
         # Base template for all security tools
         self.tool_template = {
@@ -84,13 +86,31 @@ class ToolManager:
                 # Generate summarized content
                 summary = self._summarize_manpage_content(parsed)
                 
+                # Verify documentation
+                is_verified, verification_details = self.documentation_verifier.verify_tool_documentation(
+                    tool_name, 
+                    summary
+                )
+                
                 # Format the help information
                 help_info = {
                     "source": "man_page",
                     "name": tool_name,
                     "formatted_help": self.format_tool_help(tool_name, summary),
-                    "raw_summary": summary  # Keep the raw summary for potential other uses
+                    "raw_summary": summary,  # Keep the raw summary for potential other uses
+                    "verification": {
+                        "is_verified": is_verified,
+                        "details": verification_details
+                    }
                 }
+                
+                # Update local knowledge base with verified documentation
+                if is_verified:
+                    self.documentation_verifier.update_local_knowledge_base(
+                        tool_name,
+                        summary,
+                        verification_details
+                    )
                 
                 self.tool_cache[tool_name] = help_info
                 return help_info
@@ -115,7 +135,9 @@ class ToolManager:
         context = {
             "man_page": None,
             "fine_tuning": None,
-            "common_usage": None
+            "common_usage": None,
+            "verified_documentation": None,
+            "citations": None
         }
         
         # Get man page information
@@ -137,6 +159,16 @@ class ToolManager:
         # Get common usage patterns
         if tool_name in self.common_usage:
             context["common_usage"] = self.common_usage[tool_name]
+        
+        # Get verified documentation from local knowledge base
+        verified_doc = self.documentation_verifier.get_local_documentation(tool_name)
+        if verified_doc:
+            context["verified_documentation"] = verified_doc
+        
+        # Get citations
+        citations = self.documentation_verifier.get_citations(tool_name)
+        if citations:
+            context["citations"] = citations
         
         return context
 

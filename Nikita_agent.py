@@ -15,6 +15,7 @@ import warnings
 import contextlib
 import torch
 from rich.console import Console
+import signal # Add signal import
 
 # Determine the directory of the main script (Nikita_agent.py)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -607,12 +608,42 @@ def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, 
             # Add timer for inference
             inference_start = time.time()
             
-            output = llm(final_prompt, 
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        stop=["User:", "\nUser:", "USER:"],
-                        echo=False,  # Disable echo for faster response
-                        stream=False)  # Disable streaming for faster response
+            # Use a timeout context to prevent hanging
+            import threading
+            response_event = threading.Event()
+            output_container = [None]
+            
+            def inference_worker():
+                try:
+                    result = llm(final_prompt, 
+                          max_tokens=max_tokens,
+                          temperature=temperature,
+                          stop=["User:", "\nUser:", "USER:"],
+                          echo=False,
+                          stream=False)
+                    output_container[0] = result
+                    response_event.set()
+                except Exception as e:
+                    console.print(f"[red]Worker exception: {str(e)}[/red]")
+                    response_event.set()
+            
+            # Start inference in a separate thread
+            inference_thread = threading.Thread(target=inference_worker)
+            inference_thread.daemon = True
+            inference_thread.start()
+            
+            # Wait for completion with timeout
+            if not response_event.wait(timeout=60.0):  # Extended timeout to 60 seconds
+                console.print("[red]⚠️ Model inference timed out. This might be due to resource constraints or model complexity.[/red]")
+                return {"choices": [{"text": "I apologize, but I encountered a timeout while processing your request. This might be due to the complexity of the query or resource constraints. Please try again with a simpler query."}]}
+            
+            # Get the result from the container
+            output = output_container[0]
+            
+            # If the result is None (rare case), provide a fallback
+            if output is None:
+                console.print("[red]⚠️ Model returned None. This might indicate a processing issue.[/red]")
+                return {"choices": [{"text": "I apologize, but I couldn't generate a response to that query. This might be due to technical limitations. Please try rephrasing your query."}]}
             
             inference_time = time.time() - inference_start
             console.print(f"[cyan]Inference completed in {inference_time:.2f}s[/cyan]")
@@ -650,7 +681,7 @@ def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, 
             # Print full traceback for better debugging
             import traceback
             traceback.print_exc()
-            return {"choices": [{"text": "I apologize, but I encountered an error processing your request."}]}
+            return {"choices": [{"text": "I apologize, but I encountered an error processing your request. Please try again or rephrase your query."}]}
     except Exception as e:
         console.print(f"[red]Error in get_cached_response: {str(e)}[/red]")
         import traceback
@@ -711,7 +742,35 @@ def main():
     # Setup command history with readline
     history_enabled = setup_command_history()
 
+    # Setup signal handlers for graceful termination
+    def signal_handler(sig, frame):
+        console.print("\n[bold red]Caught signal. Cleaning up and exiting...[/bold red]")
+        # Save chat history
+        save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
+        if history_enabled:
+            save_command_history()
+        
+        # Clean up resources
+        if 'llm' in globals() and llm is not None:
+            try:
+                del llm
+                import gc
+                gc.collect()
+            except:
+                pass
+        
+        # Clean up GPU manager
+        if 'gpu_manager' in globals() and gpu_manager is not None:
+            try:
+                gpu_manager.cleanup()
+            except:
+                pass
+        
+        sys.exit(0)
     
+    # Register signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
     # Verify model file exists
     if not os.path.exists(MODEL_PATH):

@@ -1,14 +1,41 @@
-
-✅ Common prompts prefetched successfully
+┌──(SUDO)
+└─> clear
+Chat memory has been cleared! 🧹
 
 ┌──(SUDO)
-└─> exploit a target 192.168.0.1 using nmap
-Chat memory length: 7
-Processing last 7 messages
-Chat memory tokens used: 171
+└─> hello
+Chat memory length: 1
+Processing last 1 messages
+Chat memory tokens used: 4
 Reasoning context tokens: 277
-Final prompt tokens: 5140
+Final prompt tokens: 4942
 Context window: 15000
 Max response tokens: 15000
 Reserved tokens: 512
 ===================
+
+⠋ 🐺 Reasoning...Starting model inference...
+⠼ 🐺 Reasoning... [10.7s]Inference completed in 10.84s
+Response generated: 35 chars
+Raw response length: 34 chars
+Cleaned response length: 34 chars
+⠦ 🐺 Reasoning... [10.8s]
+⏱️ 10.9s
+
+┌──(NIKITA 🐺)
+└─> Hello! How can I assist you today?
+
+
+┌──(SUDO)
+└─> help exploit a target 192.168.0.1 using nmap
+Chat memory length: 3
+Processing last 3 messages
+Chat memory tokens used: 42
+Reasoning context tokens: 277
+Final prompt tokens: 5005
+Context window: 15000
+Max response tokens: 15000
+Reserved tokens: 512
+===================
+
+^C

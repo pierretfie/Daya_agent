@@ -352,6 +352,7 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
                 from modules.engagement_manager import get_default_network
                 target = get_default_network()
             
+            # Enhanced command detection for security-related queries
             if "port" in query or "service" in query:
                 return f"nmap -sV -sC {target}"
             elif "vuln" in query:
@@ -360,9 +361,32 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
                 return f"nikto -h {target}"
             elif "hosts" in query or "discovery" in query:
                 return f"nmap -sn {target}"
+            elif "exploit" in query.lower() or "attack" in query.lower():
+                # Support exploit-related commands
+                if "metasploit" in query.lower() or "msf" in query.lower():
+                    return f"msfconsole -q" # Launch metasploit console
+                else:
+                    # Default aggressive scan
+                    return f"nmap -sS -A -T4 {target}"
             else:
                 return f"nmap -sV {target}"
         
+        # Add support for exploit framework commands
+        if intent == "exploit_request" or "exploit" in query.lower():
+            # Extract target if present
+            ip_match = re.search(r'(?:\d{1,3}\.){3}\d{1,3}', query)
+            target = ip_match.group(0) if ip_match else None
+            
+            # Support various exploitation tools based on query
+            if "metasploit" in query.lower() or "msf" in query.lower():
+                return "msfconsole -q"
+            elif target and "scan" in query.lower():
+                return f"nmap -sS -A -T4 {target}"
+            elif "web" in query.lower() and target:
+                return f"nikto -h {target}"
+            # Default command if none of the above match
+            return "msfconsole -q"
+            
         return None
 
     def _get_agent_response(self, intent):

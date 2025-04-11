@@ -303,6 +303,19 @@ class ResponseCleaner:
         original_length = len(text)
         original_text = text
         
+        # Apply reasoning patterns more selectively
+        # Skip filtering if the text contains security-specific content we want to preserve
+        skip_patterns = ["exploit", "metasploit", "vulnerability", "security breach", "pentest"]
+        
+        # Check if we should skip aggressive filtering
+        should_skip_filtering = any(pattern in text.lower() for pattern in skip_patterns)
+        
+        if should_skip_filtering:
+            # Only apply minimal formatting cleanup
+            text = re.sub(r'\n{4,}', '\n\n\n', text)  # Limit consecutive newlines
+            text = text.strip()
+            return text
+            
         # Apply all reasoning patterns
         for pattern in self.reasoning_patterns:
             # Replace matching patterns with empty lines

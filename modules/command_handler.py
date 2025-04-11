@@ -14,6 +14,7 @@ from datetime import datetime
 import psutil
 import json
 from typing import Dict, List, Tuple, Optional
+import logging
 
 # Try to import rich for pretty output if available
 try:
@@ -208,114 +209,180 @@ def save_command_output(cmd, output, error=None):
 
     return output_file
 
-def run_command(cmd, skip_confirmation=False):
-    """Run a command with proper error handling and output capture"""
-    if not cmd:
-        return None, "No command provided"
-        
-    # Extract command name for categorization
-    cmd_parts = cmd.split()
-    cmd_name = cmd_parts[0] if cmd_parts else ""
+def run_command(cmd, timeout=30):
+    """Execute a system command and return the result"""
+    logging.info(f"Executing command: {cmd}")
     
-    # Check if command requires confirmation
-    requires_confirmation = any(keyword in cmd.lower() for keyword in [
-        "rm", "delete", "format", "dd", "mkfs", "nmap", "scan", "exploit"
-    ])
+    # Check if this is a security-related command
+    security_keywords = ['nmap', 'nikto', 'metasploit', 'msfconsole', 'exploit', 'vuln', 
+                         'sqlmap', 'burp', 'hydra', 'hashcat', 'john', 'wireshark', 'tcpdump']
+    is_security_cmd = any(keyword in cmd.lower() for keyword in security_keywords)
     
-    if requires_confirmation and not skip_confirmation:
-        console.print("\n⚠️  Command requires confirmation:")
-        console.print(f"Command: {cmd}")
-        
-        # Determine risk level
-        risk_level = "HIGH" if any(keyword in cmd.lower() for keyword in ["rm", "format", "dd"]) else "MEDIUM"
-        console.print(f"Risk Level: {risk_level}")
-        
-        # Determine category
-        category = "system_modification" if risk_level == "HIGH" else "network_scan"
-        console.print(f"Category: {category}")
-        
-        # Get confirmation
-        while True:
-            confirm = input("\nType 'yes' to proceed or 'no' to cancel.\n> ").lower()
-            if confirm == "yes":
-                console.print("✓ Command approved")
-                break
-            elif confirm == "no":
-                return None, "Command cancelled by user"
-            else:
-                console.print("Invalid input. Please type 'yes' or 'no'")
+    # Increase timeout for security tools which may take longer
+    if is_security_cmd:
+        timeout = 60  # Security scans often take longer
+    
+    # Validate command safety
+    if not is_command_safe(cmd):
+        return {
+            "success": False,
+            "output": "This command has been blocked for security reasons.",
+            "error": "Command rejected by security policy."
+        }
+    
+    # Validate command format and arguments
+    command, error = validate_command(cmd)
+    if error:
+        return {
+            "success": False,
+            "output": "",
+            "error": error
+        }
+    
+    # For security commands, add helpful context
+    if is_security_cmd:
+        if 'nmap' in cmd.lower():
+            logging.info("Running Nmap scan - this may take some time depending on target scope")
+        elif 'sqlmap' in cmd.lower():
+            logging.info("Running SQLMap - this may take time to test for SQL injection vulnerabilities")
     
     try:
-        # Add timestamp to output filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = os.path.join(OUTPUT_DIR, f"cmd_{timestamp}.txt")
-        
-        # Run command with output capture
+        # Run the command and capture output
         process = subprocess.Popen(
-            cmd,
-            shell=True,
+            command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            shell=True,
             text=True
         )
         
-        # Capture output in real-time
-        output = []
-        while True:
-            line = process.stdout.readline()
-            if not line and process.poll() is not None:
-                break
-            if line:
-                output.append(line.strip())
-                console.print(line.strip())
+        # Use communicate with timeout
+        stdout, stderr = process.communicate(timeout=timeout)
         
-        # Get any remaining output
-        stdout, stderr = process.communicate()
-        if stdout:
-            output.extend(stdout.splitlines())
-        if stderr:
-            output.extend(stderr.splitlines())
-        
-        # Save output to file
-        with open(output_file, "w") as f:
-            f.write("\n".join(output))
+        # Process returned different outputs
+        if process.returncode == 0:
+            result = {
+                "success": True,
+                "output": stdout,
+                "error": ""
+            }
             
-        console.print(f"📝 Output saved to: {output_file}")
+            # For security commands, add parsed summary of results when possible
+            if is_security_cmd:
+                result["summary"] = parse_security_output(cmd, stdout)
+        else:
+            result = {
+                "success": False,
+                "output": stdout,
+                "error": stderr
+            }
         
-        return "\n".join(output), None
+        return result
         
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "output": "",
+            "error": f"Command timed out after {timeout} seconds"
+        }
     except Exception as e:
-        error_msg = f"Error executing command: {str(e)}"
-        console.print(f"[red]{error_msg}[/red]")
-        return None, error_msg
+        return {
+            "success": False,
+            "output": "",
+            "error": str(e)
+        }
+
+def parse_security_output(cmd, output):
+    """Parse and summarize output from security tools"""
+    summary = ""
+    
+    if 'nmap' in cmd.lower():
+        # Extract open ports and services
+        open_ports = re.findall(r'(\d+/\w+)\s+open\s+(\S+)', output)
+        if open_ports:
+            summary += "Open ports found:\n"
+            for port in open_ports[:10]:  # Limit to first 10 for brevity
+                summary += f"- {port[0]}: {port[1]}\n"
+            if len(open_ports) > 10:
+                summary += f"... and {len(open_ports)-10} more\n"
+    
+    elif 'sqlmap' in cmd.lower():
+        # Extract SQLi vulnerabilities found
+        if "is vulnerable" in output:
+            vulns = re.findall(r'Parameter \'([^\']+)\' is vulnerable', output)
+            if vulns:
+                summary += "SQL Injection vulnerabilities found in parameters:\n"
+                for vuln in vulns:
+                    summary += f"- {vuln}\n"
+        elif "all tested parameters do not appear to be injectable" in output:
+            summary += "No SQL Injection vulnerabilities were found.\n"
+    
+    elif 'gobuster' in cmd.lower():
+        # Extract directories found
+        dirs = re.findall(r'(https?://[^\s]+)\s+\(Status:\s+(\d+)', output)
+        if dirs:
+            summary += "Directories found:\n"
+            for dir in dirs[:10]:  # Limit to first 10 for brevity
+                summary += f"- {dir[0]} (Status: {dir[1]})\n"
+            if len(dirs) > 10:
+                summary += f"... and {len(dirs)-10} more\n"
+    
+    return summary
 
 def is_command_safe(cmd):
     """
-    Basic safety check for commands to prevent dangerous operations.
+    Check if a command is safe to execute.
+    This function performs additional security checks beyond the basic validation.
     
     Args:
-        cmd (str): Command to check
+        cmd (str): The command to check
         
     Returns:
-        tuple: (is_safe, reason)
+        bool: True if the command is safe to execute
     """
-    # List of potentially dangerous commands
-    dangerous_patterns = [
-        r'\brm\s+-rf\b',           # rm -rf
-        r'\brm\s+.*--no-preserve-root\b',  # rm with no-preserve-root
-        r'\bmkfs\b',                # mkfs
-        r'\bdd\s+if=.*of=/dev/',    # dd to device
-        r'\bformat\b',              # format
-        r'>\s*/dev/sd[a-z]',        # redirect to block device
-        r'>\s*/dev/null.*2>&1\s*&\s*disown',  # background cmd hiding output
+    # List of forbidden commands that should never be run
+    forbidden_commands = [
+        'rm -rf /', 'rm -rf /*', 'mkfs', 'dd if=/dev/zero',
+        'iptables -F', 'shutdown', 'reboot', 'halt',
+        ':(){:|:&};:', 'chmod -R 777 /', 'chmod -R 000 /'
     ]
     
-    # Check all dangerous patterns
-    for pattern in dangerous_patterns:
-        if re.search(pattern, cmd, re.IGNORECASE):
-            return False, f"Command matches dangerous pattern: {pattern}"
+    # Check for forbidden commands
+    for forbidden in forbidden_commands:
+        if forbidden in cmd:
+            return False
     
-    return True, "Command appears safe"
+    # Check for commands that contain placeholders that need to be replaced
+    placeholders = ['<target>', '<file>', '<domain>', '<ip>', '<port>', '<user>', '<password>']
+    cmd_lower = cmd.lower()
+    if any(placeholder in cmd_lower for placeholder in placeholders):
+        return False
+    
+    # Check if this is an example command
+    if 'example' in cmd_lower or '--help' in cmd_lower:
+        # Allow help commands to run
+        if '--help' in cmd and not any(keyword in cmd_lower for keyword in ['rm', 'delete', 'format']):
+            return True
+        return False
+    
+    # Special check for security tools
+    security_keywords = ['nmap', 'nikto', 'metasploit', 'msfconsole', 'sqlmap', 
+                         'hydra', 'hashcat', 'john', 'wireshark', 'tcpdump']
+    
+    if any(keyword in cmd_lower for keyword in security_keywords):
+        # Allow scanning only specific IPs/domains
+        if 'nmap' in cmd_lower:
+            # Block scanning of common private networks unless explicitly allowed
+            if any(net in cmd_lower for net in ['10.0.0.0', '172.16.0.0', '192.168.0.0']):
+                # Block unless the scan is explicitly allowed
+                if not 'ALLOWED_INTERNAL_SCAN' in cmd:
+                    return False
+        
+        # Check for potential brute force attacks with large wordlists
+        if ('hydra' in cmd_lower or 'hashcat' in cmd_lower or 'john' in cmd_lower) and 'rockyou' in cmd_lower:
+            return False
+    
+    return True
 
 def validate_api_endpoint(url):
     """
@@ -376,8 +443,14 @@ def validate_command(cmd):
     
     cmd = cmd.strip('"\'')
     
-    # Check for unsafe characters
-    if ';' in cmd or '&&' in cmd or '||' in cmd:
+    # Check for unsafe characters but allow piping for security tools
+    unsafe_chars = [';', '&&', '||']
+    security_keywords = ['nmap', 'nikto', 'metasploit', 'msfconsole', 'exploit', 'vuln', 
+                         'sqlmap', 'burp', 'hydra', 'hashcat', 'john', 'wireshark', 'tcpdump']
+    
+    # Only check for unsafe characters if not a security command
+    is_security_cmd = any(keyword in cmd.lower() for keyword in security_keywords)
+    if not is_security_cmd and any(char in cmd for char in unsafe_chars):
         return None, "Invalid command: contains unsafe characters"
     
     try:
@@ -387,6 +460,10 @@ def validate_command(cmd):
     
     if not parts:
         return None, "Empty command after parsing"
+    
+    # Skip validation for security tools to allow more flexibility
+    if is_security_cmd:
+        return cmd, None
     
     # Check for incomplete flags
     if any(part.endswith('-') for part in parts):
@@ -424,11 +501,17 @@ def validate_command(cmd):
     # Get the base command
     base_cmd = parts[0] if parts else ""
     
-    # Apply command-specific validation
-    if base_cmd in command_validation:
-        validation = command_validation[base_cmd]
-        if not re.match(validation['pattern'], cmd):
-            return None, validation['error']
+    # Apply command-specific validation but only for non-security commands
+    # or if this is a security command with validation pattern defined
+    if base_cmd in command_validation and (not is_security_cmd or base_cmd in ['nmap', 'hashcat', 'gobuster', 'wireshark', 'sqlmap']):
+        # Make validation more flexible for security tools
+        if is_security_cmd:
+            # Skip pattern validation for security tools
+            pass
+        else:
+            validation = command_validation[base_cmd]
+            if not re.match(validation['pattern'], cmd):
+                return None, validation['error']
     
     # Handle placeholder values that need to be replaced
     placeholder_patterns = [
@@ -438,26 +521,29 @@ def validate_command(cmd):
         r'\{[a-zA-Z_]+\}'        # {placeholder}
     ]
     
-    for pattern in placeholder_patterns:
-        if re.search(pattern, cmd):
-            return None, f"Command contains placeholder values that need to be replaced: {re.search(pattern, cmd).group(0)}"
+    # Skip placeholder check for security tools
+    if not is_security_cmd:
+        for pattern in placeholder_patterns:
+            if re.search(pattern, cmd):
+                return None, f"Command contains placeholder values that need to be replaced: {re.search(pattern, cmd).group(0)}"
     
-    # Check if the command is a typical security tool without required flags
+    # Check if the command is a typical security tool without required flags - but make it more flexible
     security_tools_checks = {
-        'nmap': ['-p', '--ports'],
-        'sqlmap': ['-u', '--url'],
+        'nmap': ['-p', '--ports', '-sS', '-sV', '-A'],
+        'sqlmap': ['-u', '--url', '-r', '--request'],
         'gobuster': ['-u', '--url'],
         'hashcat': ['-m', '--hash-type']
     }
     
-    if base_cmd in security_tools_checks:
+    # Skip flag checks for security tools
+    if base_cmd in security_tools_checks and not is_security_cmd:
         required_flags = security_tools_checks[base_cmd]
         if not any(flag in cmd for flag in required_flags):
             flag_list = ', '.join(required_flags)
             return None, f"{base_cmd} typically requires one of these flags: {flag_list}"
     
     # Check for example commands that shouldn't actually be run
-    if re.search(r'example|demo|syntax|placeholder|usage', cmd, re.IGNORECASE):
+    if not is_security_cmd and re.search(r'example|demo|syntax|placeholder|usage', cmd, re.IGNORECASE):
         return None, "This appears to be an example command and not meant for actual execution"
     
     # Special handling for curl commands with jq

@@ -1,57 +1,108 @@
 
-┌──(SUDO)
-└─> imagine  you are a cybersecurity analysst how would you approach a target google.com
-Chat memory length: 1
-Processing last 1 messages
-Chat memory tokens used: 28
-Reasoning context tokens: 277
-Final prompt tokens: 4989
-Context window: 15000
-Max response tokens: 15000
-Reserved tokens: 512
-===================
-
-⠧ 🐺 Reasoning... [13.3s]
-⏱️ 13.4s
-
-┌──(NIKITA 🐺)
-└─> As a cybersecurity analyst, my approach to analyzing the security of 
-Google.com would involve several key steps. Firstly, I would gather information 
-about the target website's infrastructure and any known vulnerabilities or 
-exploits. This could include conducting a web application scan, reviewing 
-publicly available security reports, and checking for known vulnerabilities in 
-the site's software or frameworks.
-
-Next, I would analyze the site's network traffic to identify any potential 
-threats or suspicious activity. This might involve using tools like Wireshark or
-Nmap to capture and analyze network packets, looking for signs of malicious 
-activity such as unauthorized access attempts or data exfiltration.
-
-In addition, I would also perform a social engineering attack on the target 
-website to assess the effectiveness of its security measures. This could involve
-attempting to trick employees or users into revealing sensitive information or 
-granting unauthorized access to the site's systems.
-
-Throughout this analysis, it is important to keep in mind the potential risks 
-and threats associated with any vulnerabilities or exploits discovered. It may 
-be necessary to take immediate action to mitigate these risks, such as patching 
-known vulnerabilities or implementing additional security measures to protect 
-against future attacks.
-
-Overall, my approach to analyzing the security of Google.com would involve a 
-comprehensive analysis of the target website's infrastructure, network traffic, 
-and social engineering measures, with the goal of identifying and mitigating any
-potential threats or vulnerabilities.
-
 
 ┌──(SUDO)
-└─> what tools would you use
+└─> given a atrget 192.168.0.1 ; how would you find vulnerabilities
 Chat memory length: 3
 Processing last 3 messages
-Chat memory tokens used: 532
+Chat memory tokens used: 450
 Reasoning context tokens: 277
-Final prompt tokens: 5480
+Final prompt tokens: 5419
 Context window: 15000
 Max response tokens: 15000
 Reserved tokens: 512
 ===================
+
+⠏ 🐺 Reasoning... [15.8s]
+⏱️ 15.9s
+
+┌──(NIKITA 🐺)
+└─> --- As Nikita, ---
+As Nikita, I would follow these steps to find vulnerabilities on the target IP 
+address 192.168.0.1:
+
+1. Start by performing an initial scan of the target IP address using a tool 
+like Nmap. This will help identify open ports and running services on the 
+target.
+
+Example command: `nmap -p- -sS 192.168.0.1`
+
+This command will perform a full system scan (-sS) of all ports (-p-) on IP 
+address 192.168.0.1.
+
+1. Next, use a vulnerability scanner like OpenVAS to identify any known 
+vulnerabilities in the services and software running on the target.
+
+Example command: `openvas-cli --host 192.168.0.1`
+
+This command will initiate an OpenVAS scan of IP address 192.168.0.1.
+
+1. Once you have identified potential vulnerabilities, you can use exploit tools
+like Metasploit to attempt to exploit these vulnerabilities and gain access to 
+the target system.
+
+Example command: `msfconsole -h 192.168.0.1`
+
+This command will launch Metasploit on IP address 192.168.0.1. From there, you 
+can browse through available exploits and attempt to use them to gain access to 
+the target system.
+
+It's important to note that attempting to exploit vulnerabilities without 
+permission is illegal and unethical. Always obtain permission before performing 
+any security testing on a system or network.
+
+
+Proposed Command: nmap -p- -sS 192.168.0.1
+Execute this command? (Y/N): n
+Command execution skipped by user.
+
+┌──(SUDO)
+└─> using nmap only
+Chat memory length: 5
+Processing last 5 messages
+Chat memory tokens used: 951
+Reasoning context tokens: 277
+Final prompt tokens: 5903
+Context window: 15000
+Max response tokens: 15000
+Reserved tokens: 512
+===================
+
+⠴ 🐺 Reasoning... [37.1s]
+⏱️ 37.2s
+
+┌──(NIKITA 🐺)
+└─> 1. Understand the query: In this case, the user is asking for information 
+about how to use Nmap with the target IP address 192.168.0.1.
+
+1. Provide information: Nmap is a powerful network scanning tool that can be 
+used to identify open ports, running services, and potential vulnerabilities on 
+a target system or network. To use Nmap with the target IP address 192.168.0.1, 
+you would first need to install Nmap on your local machine.
+
+Example command: `sudo apt-get install nmap`
+
+This command will install Nmap on a Linux system using the APT package manager.
+
+Once Nmap is installed, you can use it to perform a port scan of the target IP 
+address 192.168.0.1. This will help identify any open ports and running services
+on the target system.
+
+Example command: `nmap -p- -sS 192.168.0.1`
+
+This command will perform a full system scan (-sS) of all ports (-p-) on IP 
+address 192.168.0.1.
+
+1. Ask clarifying questions: It's important to note that attempting to exploit 
+vulnerabilities without permission is illegal and unethical. Always obtain 
+permission before performing any security testing on a system or network. 
+Additionally, it's crucial to understand the target IP address's context and 
+purpose to ensure you don't accidentally scan or attempt to exploit any critical
+systems.
+
+It's also important to use Nmap responsibly, following its guidelines and 
+documentation. Always verify your commands before executing them, especially 
+when scanning sensitive systems or networks.
+
+
+Proposed Command: sudo apt-get install nmap
+Execute this command? (Y/N): 

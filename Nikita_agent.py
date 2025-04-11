@@ -43,6 +43,7 @@ from modules.resource_management import get_system_info, get_dynamic_params, opt
 from modules.history_manager import setup_command_history, save_command_history, get_input_with_history, load_chat_history, save_chat_history
 from modules.context_optimizer import ContextOptimizer
 from modules.semantic_context_optimizer import SemanticContextOptimizer
+from modules.response_cleaner import ResponseCleaner
 from modules.command_handler import run_command
 from modules.engagement_manager import extract_targets, suggest_attack_plan, engagement_memory
 from modules.reasoning_engine import ReasoningEngine
@@ -572,6 +573,9 @@ base_context_optimizer = ContextOptimizer(
 # Initialize semantic context optimizer with base optimizer
 context_optimizer = SemanticContextOptimizer(base_optimizer=base_context_optimizer)
 
+# Initialize response cleaner
+response_cleaner = ResponseCleaner()
+
 # Define a function to get responses with optimized caching
 def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, prompt_type='full'):
     """Get response from model with optimized caching and error handling"""
@@ -906,37 +910,12 @@ def main():
                     output = get_cached_response(base_prompt, prompt_type=prompt_type)
                     response = output['choices'][0]['text'].strip()
                     
-                    # Ensure we have a valid response
-                    if not response or response.lower().startswith(('i apologize', 'sorry', 'error')):
-                        # Generate a fallback response using the same prompt
-                        output = get_cached_response(base_prompt, prompt_type=prompt_type)
-                        response = output['choices'][0]['text'].strip()
+                    # Clean the response using the response cleaner
+                    cleaned_result = response_cleaner.clean_response(response)
+                    clean_response = response_cleaner.format_for_display(cleaned_result)
                     
-                    # Try to parse response as JSON first
-                    try:
-                        response_data = json.loads(response)
-                        if isinstance(response_data, dict) and 'output_message' in response_data:
-                            clean_response = response_data['output_message']
-                        else:
-                            clean_response = response
-                    except json.JSONDecodeError:
-                        # If not JSON, filter out reasoning sections and metadata
-                        response_lines = response.split('\n')
-                        filtered_response = []
-                        skip_section = False
-                        for line in response_lines:
-                            line = line.strip()
-                            # Skip JSON-like lines and reasoning sections
-                            if line.startswith(('{', '}', 'Understanding:', 'Response:', '"input_context":', '"domain_context":', '"output_context":', '"output_format":', '"output_type":', '"output_level":', '"output_tone":', '"output_format_version":', 'Reasoning:', 'Follow-up Questions:', 'Task:')):
-                                skip_section = True
-                                continue
-                            # Reset skip_section when we hit an empty line
-                            if not line:
-                                skip_section = False
-                            # Only add lines when not in a skip section
-                            if not skip_section and line:
-                                filtered_response.append(line)
-                        clean_response = '\n'.join(filtered_response).strip()
+                    # Extract commands from the response if any
+                    extracted_commands = cleaned_result.get('commands', [])
                     
                     # Ensure we have content to display
                     if not clean_response:
@@ -960,8 +939,9 @@ def main():
                     console.print(f"[red]Error generating response: {str(e)}[/red]")
                     console.print("[yellow]Please try rephrasing your question.[/yellow]")
 
-                # Process any commands in the response
-                command_match = re.search(r'```(.*?)```', response, re.DOTALL) or re.search(r'`(.*?)`', response, re.DOTALL)
+                # Process any commands extracted by the response cleaner
+                extracted_commands = cleaned_result.get('commands', [])
+                command_to_execute = extracted_commands[0] if extracted_commands else None
                 
                 executed_command_this_turn = False # Flag to avoid double execution
 
@@ -998,9 +978,9 @@ def main():
                         confirm_and_run_command(cmd)
                         executed_command_this_turn = True
 
-                elif command_match and not executed_command_this_turn:
+                elif command_to_execute and not executed_command_this_turn:
                     # Execute command from response (with confirmation)
-                    cmd = command_match.group(1).strip()
+                    cmd = command_to_execute
                     
                     # Check if it's a help request (don't need confirmation)
                     if cmd.lower().startswith(('help', 'man')):

@@ -144,9 +144,6 @@ class ResponseCleaner:
         # Extract commands from the clean text
         commands = self._extract_commands(clean_text)
         
-        # Clean up internal reasoning markers
-        clean_text = self._clean_internal_reasoning(clean_text)
-        
         return {
             'clean_text': clean_text,
             'commands': commands,
@@ -215,9 +212,6 @@ class ResponseCleaner:
         # Extract commands
         commands = self._extract_commands(clean_text)
         
-        # Clean up internal reasoning markers
-        clean_text = self._clean_internal_reasoning(clean_text)
-        
         return {
             'clean_text': clean_text,
             'commands': commands,
@@ -259,32 +253,6 @@ class ResponseCleaner:
             
         return '\n'.join(cleaned_lines)
         
-    def _clean_internal_reasoning(self, text: str) -> str:
-        """Clean internal reasoning markers from text"""
-        # Remove internal reasoning markers
-        text = re.sub(r'--- As Nikita, ---\n', '', text)
-        text = re.sub(r'1\.\s+Understand the query:.*?\n', '', text, flags=re.DOTALL)
-        text = re.sub(r'1\.\s+Provide information:.*?\n', '', text, flags=re.DOTALL)
-        text = re.sub(r'1\.\s+Ask clarifying questions:.*?\n', '', text, flags=re.DOTALL)
-        
-        # Remove numbered steps that are part of internal reasoning
-        text = re.sub(r'\d+\.\s+Understand.*?\n', '', text, flags=re.DOTALL)
-        text = re.sub(r'\d+\.\s+Provide.*?\n', '', text, flags=re.DOTALL)
-        text = re.sub(r'\d+\.\s+Ask.*?\n', '', text, flags=re.DOTALL)
-        
-        # Remove any remaining internal reasoning markers
-        text = re.sub(r'Reasoning:.*?\n', '', text, flags=re.DOTALL)
-        text = re.sub(r'Analysis:.*?\n', '', text, flags=re.DOTALL)
-        text = re.sub(r'Thought process:.*?\n', '', text, flags=re.DOTALL)
-        
-        # Clean up any resulting double newlines
-        text = re.sub(r'\n\s*\n', '\n\n', text)
-        
-        # Remove any leading/trailing whitespace
-        text = text.strip()
-        
-        return text
-        
     def format_for_display(self, cleaned_response: Dict[str, Any]) -> str:
         """
         Format the cleaned response for display to the user.
@@ -299,19 +267,6 @@ class ResponseCleaner:
         
         # Final cleanup to ensure no role prefixes remain
         clean_text = self._remove_role_prefixes(clean_text)
-        
-        # Ensure response starts with a clean line
-        clean_text = clean_text.lstrip()
-        
-        # Add proper spacing between sections
-        clean_text = re.sub(r'\n\s*\n', '\n\n', clean_text)
-        
-        # Remove any remaining internal markers
-        clean_text = re.sub(r'\[Internal\]\s*', '', clean_text)
-        clean_text = re.sub(r'\[Reasoning\]\s*', '', clean_text)
-        
-        # Ensure response ends with a single newline
-        clean_text = clean_text.rstrip() + '\n'
         
         return clean_text
 

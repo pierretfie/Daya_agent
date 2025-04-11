@@ -113,6 +113,9 @@ class ResponseCleaner:
         if not clean_text:
             clean_text = "I apologize, but I couldn't format my response properly. Here's the raw data:\n\n" + json.dumps(json_data, indent=2)
             
+        # Remove any "Nikita:" header from the beginning of the response
+        clean_text = re.sub(r'^\s*Nikita\s*:\s*', '', clean_text)
+            
         # Extract metadata
         for section in self.metadata_sections:
             if section in json_data:
@@ -129,6 +132,9 @@ class ResponseCleaner:
         
     def _process_text_response(self, text: str) -> Dict[str, Any]:
         """Process a plain text response"""
+        # Remove any "Nikita:" header from the beginning of the response
+        text = re.sub(r'^\s*Nikita\s*:\s*', '', text)
+        
         # Split into lines for processing
         lines = text.split('\n')
         clean_lines = []
@@ -216,7 +222,13 @@ class ResponseCleaner:
         Returns:
             str: Formatted text ready for display
         """
-        return cleaned_response['clean_text']
+        clean_text = cleaned_response['clean_text']
+        
+        # Final cleanup to ensure no agent headers remain
+        clean_text = re.sub(r'^\s*Nikita\s*:\s*', '', clean_text)
+        clean_text = re.sub(r'^\s*NIKITA\s*:\s*', '', clean_text)
+        
+        return clean_text
 
 
 if __name__ == "__main__":

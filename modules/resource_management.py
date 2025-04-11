@@ -46,7 +46,7 @@ def get_dynamic_params():
     base_config = {
         'n_threads': max(1, min(int(cpu_count * 0.5), 4)),  # Reduced from 0.85, max 4 threads
         'n_batch': n_batch,
-        'max_tokens': 2048,  # Restored original value
+        'max_tokens': DEFAULT_MAX_TOKENS,  # Restored original value
         'context_limit': context_limit,
         'memory_limit': memory_limit,
         'memory_target_gb': memory_target_gb,

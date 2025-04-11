@@ -42,6 +42,7 @@ from modules.intent_analyzer import IntentAnalyzer
 from modules.resource_management import get_system_info, get_dynamic_params, optimize_memory_resources, optimize_cpu_usage, prewarm_model
 from modules.history_manager import setup_command_history, save_command_history, get_input_with_history, load_chat_history, save_chat_history
 from modules.context_optimizer import ContextOptimizer
+from modules.semantic_context_optimizer import SemanticContextOptimizer
 from modules.command_handler import run_command
 from modules.engagement_manager import extract_targets, suggest_attack_plan, engagement_memory
 from modules.reasoning_engine import ReasoningEngine
@@ -59,6 +60,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 from modules.context_optimizer import DEFAULT_MAX_TOKENS, DEFAULT_RESERVE_TOKENS
 
 # Model parameters
+RESERVE_TOKENS = DEFAULT_RESERVE_TOKENS
 MAX_TOKENS = DEFAULT_MAX_TOKENS  # Use the same value as context_optimizer
 TEMPERATURE = 0.5  # Reduced from 0.7 for more focused responses
 # Maximum number of messages to keep in memory
@@ -561,11 +563,14 @@ system_commands, categorized_commands = discover_system_commands()
 # Initialize intent analyzer
 intent_analyzer = IntentAnalyzer(OUTPUT_DIR, system_commands)
 
-# Initialize context optimizer - ensure llm exists if needed, or pass None/handle later
-context_optimizer = ContextOptimizer(
-    max_tokens=system_params['context_limit'],
-    reserve_tokens=system_params['max_tokens'] # Assuming reserve_tokens is independent of llm
+# Initialize context optimizers - ensure llm exists if needed, or pass None/handle later
+base_context_optimizer = ContextOptimizer(
+    max_tokens= DEFAULT_MAX_TOKENS,
+    reserve_tokens= DEFAULT_RESERVE_TOKENS # Assuming reserve_tokens is independent of llm
 )
+
+# Initialize semantic context optimizer with base optimizer
+context_optimizer = SemanticContextOptimizer(base_optimizer=base_context_optimizer)
 
 # Define a function to get responses with optimized caching
 def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, prompt_type='full'):

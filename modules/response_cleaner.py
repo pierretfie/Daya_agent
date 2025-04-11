@@ -9,6 +9,10 @@ and free from metadata, JSON artifacts, and other unwanted content.
 import re
 import json
 from typing import Dict, Any, List, Union, Optional
+from rich.console import Console
+
+# Create a console instance at the module level
+console = Console()
 
 class ResponseCleaner:
     """
@@ -20,6 +24,7 @@ class ResponseCleaner:
         """Initialize the response cleaner"""
         self.json_pattern = re.compile(r'^\s*\{.*\}\s*$', re.DOTALL)
         self.command_pattern = re.compile(r'```(?:\w+)?\s*([^`]+)```|`([^`]+)`')
+        self.debug_mode = True  # Enable debug mode
         
         # Role prefixes to clean from responses
         self.role_prefixes = [
@@ -46,6 +51,25 @@ class ResponseCleaner:
             "domain", "intent", "answered_context", "follow_up_questions"
         ]
         
+        # New patterns for removing reasoning steps and analysis indicators
+        self.reasoning_patterns = [
+            # Pattern for numbered steps with labels (e.g., "1. UNDERSTAND: ...")
+            re.compile(r'^\s*\d+\.\s*[A-Z_]+:.*$', re.MULTILINE),
+            
+            # Pattern for numbered steps (e.g., "1. Understand the query: ...")
+            re.compile(r'^\s*\d+\.\s*(Understand|Analyze|Identify|Determine|Provide|Ask).*:.*$', re.MULTILINE),
+            
+            # Pattern for "As Nikita, ..." prefix
+            re.compile(r'^\s*---\s*As Nikita,\s*---\s*$', re.MULTILINE),
+            re.compile(r'^\s*As Nikita,\s*', re.MULTILINE),
+            
+            # Pattern for task analysis headings
+            re.compile(r'^\s*Task Analysis:.*$', re.MULTILINE),
+            
+            # Pattern for response structure indicators
+            re.compile(r'^\s*(Understanding|Analysis|Approach|Response):.*$', re.MULTILINE)
+        ]
+        
     def clean_response(self, raw_response: str) -> Dict[str, Any]:
         """
         Clean and format a raw LLM response.
@@ -59,7 +83,12 @@ class ResponseCleaner:
                 - 'commands': List of extracted commands
                 - 'metadata': Any extracted metadata
         """
+        if self.debug_mode:
+            console.print(f"[cyan]Raw response length: {len(raw_response)} chars[/cyan]")
+            
         if not raw_response:
+            if self.debug_mode:
+                console.print("[yellow]Warning: Empty raw response[/yellow]")
             return {
                 'clean_text': "I apologize, but I couldn't generate a response. Please try again.",
                 'commands': [],
@@ -69,11 +98,21 @@ class ResponseCleaner:
         # Try to parse as JSON first
         json_data = self._extract_json(raw_response)
         
+        result = None
         if json_data:
-            return self._process_json_response(json_data)
+            result = self._process_json_response(json_data)
         else:
-            return self._process_text_response(raw_response)
+            result = self._process_text_response(raw_response)
             
+        if self.debug_mode:
+            console.print(f"[cyan]Cleaned response length: {len(result['clean_text'])} chars[/cyan]")
+            if len(result['clean_text']) == 0:
+                console.print("[yellow]Warning: Response was completely filtered out![/yellow]")
+                console.print("[yellow]First 100 chars of raw response: [/yellow]")
+                console.print(raw_response[:100] + "...")
+            
+        return result
+        
     def _extract_json(self, text: str) -> Optional[Dict[str, Any]]:
         """Extract and parse JSON from text if present"""
         if self.json_pattern.match(text):
@@ -154,6 +193,9 @@ class ResponseCleaner:
         """Process a plain text response"""
         # Remove any role prefixes from the beginning of the response
         text = self._remove_role_prefixes(text)
+        
+        # Remove reasoning steps and analysis indicators
+        text = self._remove_reasoning_patterns(text)
         
         # Split into lines for processing
         lines = text.split('\n')
@@ -253,6 +295,53 @@ class ResponseCleaner:
             
         return '\n'.join(cleaned_lines)
         
+    def _remove_reasoning_patterns(self, text: str) -> str:
+        """Remove reasoning steps and analysis indicators from text"""
+        if not text:
+            return text
+            
+        original_length = len(text)
+        original_text = text
+        
+        # Apply all reasoning patterns
+        for pattern in self.reasoning_patterns:
+            # Replace matching patterns with empty lines
+            text = pattern.sub('', text)
+        
+        # Clean up multiple consecutive empty lines
+        text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+        
+        # Clean up leading and trailing whitespace
+        text = text.strip()
+        
+        # If we've filtered out too much (e.g., more than 80% of the content),
+        # revert to a less aggressive cleaning approach
+        if len(text) < original_length * 0.2 and original_length > 100:  # If more than 80% was filtered
+            console.print(f"[yellow]Warning: Filtered too much content ({((original_length - len(text)) / original_length * 100):.1f}%). Using less aggressive filtering.[/yellow]")
+            
+            # Try a more targeted approach - only remove specific reasoning patterns
+            text = original_text
+            
+            # Only remove the most obvious reasoning patterns
+            text = re.sub(r'^\s*\d+\.\s*UNDERSTAND:.*$', '', text, flags=re.MULTILINE)
+            text = re.sub(r'^\s*\d+\.\s*PLAN:.*$', '', text, flags=re.MULTILINE)
+            text = re.sub(r'^\s*\d+\.\s*TOOLS:.*$', '', text, flags=re.MULTILINE)
+            text = re.sub(r'^\s*\d+\.\s*SAFETY:.*$', '', text, flags=re.MULTILINE)
+            text = re.sub(r'^\s*\d+\.\s*EXECUTION:.*$', '', text, flags=re.MULTILINE)
+            text = re.sub(r'^\s*\d+\.\s*ANALYSIS:.*$', '', text, flags=re.MULTILINE)
+            
+            # Clean up multiple consecutive empty lines
+            text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+            text = text.strip()
+            
+            if self.debug_mode:
+                console.print(f"[green]After less aggressive filtering: {len(text)} chars remaining[/green]")
+        
+        if self.debug_mode and len(text) < original_length * 0.5:  # If more than 50% was filtered
+            console.print(f"[yellow]Warning: Filtered {original_length - len(text)} chars ({((original_length - len(text)) / original_length * 100):.1f}%) during reasoning pattern removal[/yellow]")
+        
+        return text
+        
     def format_for_display(self, cleaned_response: Dict[str, Any]) -> str:
         """
         Format the cleaned response for display to the user.
@@ -264,9 +353,42 @@ class ResponseCleaner:
             str: Formatted text ready for display
         """
         clean_text = cleaned_response['clean_text']
+        original_length = len(clean_text)
         
-        # Final cleanup to ensure no role prefixes remain
+        # Final cleanup to ensure no role prefixes or reasoning patterns remain
         clean_text = self._remove_role_prefixes(clean_text)
+        clean_text = self._remove_reasoning_patterns(clean_text)
+        
+        # Trim leading/trailing whitespace and make sure there aren't excessive blank lines
+        clean_text = re.sub(r'\n{3,}', '\n\n', clean_text)
+        clean_text = clean_text.strip()
+        
+        if self.debug_mode and len(clean_text) == 0 and original_length > 0:
+            console.print("[red]Error: Final formatting completely removed the response![/red]")
+            
+            # Examine metadata for clues about the topic
+            metadata = cleaned_response.get('metadata', {})
+            commands = cleaned_response.get('commands', [])
+            
+            # Check if this is security-related from the command list
+            is_security_related = any(cmd in ' '.join(commands).lower() for cmd in ['nmap', 'exploit', 'scan', 'hack', 'metasploit'])
+            
+            # Provide an appropriate fallback response
+            if is_security_related:
+                return """
+I noticed you're asking about security tools or techniques. Here are some important points:
+
+1. Always ensure you have proper authorization before performing any security testing
+2. For network scanning with nmap, start with less intrusive options like:
+   - Basic port scan: `nmap -p 1-1000 <target>`
+   - Service detection: `nmap -sV <target>`
+   - OS detection: `nmap -O <target>`
+
+For more specific guidance, please clarify your authorization status and testing goals.
+""".strip()
+            else:
+                # Generic fallback
+                return "I apologize, but I couldn't generate a proper response to your query. Could you please rephrase or provide more details?"
         
         return clean_text
 

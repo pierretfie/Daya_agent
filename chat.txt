@@ -1,108 +1,14 @@
 
+✅ Common prompts prefetched successfully
 
 ┌──(SUDO)
-└─> given a atrget 192.168.0.1 ; how would you find vulnerabilities
-Chat memory length: 3
-Processing last 3 messages
-Chat memory tokens used: 450
+└─> exploit a target 192.168.0.1 using nmap
+Chat memory length: 7
+Processing last 7 messages
+Chat memory tokens used: 171
 Reasoning context tokens: 277
-Final prompt tokens: 5419
+Final prompt tokens: 5140
 Context window: 15000
 Max response tokens: 15000
 Reserved tokens: 512
 ===================
-
-⠏ 🐺 Reasoning... [15.8s]
-⏱️ 15.9s
-
-┌──(NIKITA 🐺)
-└─> --- As Nikita, ---
-As Nikita, I would follow these steps to find vulnerabilities on the target IP 
-address 192.168.0.1:
-
-1. Start by performing an initial scan of the target IP address using a tool 
-like Nmap. This will help identify open ports and running services on the 
-target.
-
-Example command: `nmap -p- -sS 192.168.0.1`
-
-This command will perform a full system scan (-sS) of all ports (-p-) on IP 
-address 192.168.0.1.
-
-1. Next, use a vulnerability scanner like OpenVAS to identify any known 
-vulnerabilities in the services and software running on the target.
-
-Example command: `openvas-cli --host 192.168.0.1`
-
-This command will initiate an OpenVAS scan of IP address 192.168.0.1.
-
-1. Once you have identified potential vulnerabilities, you can use exploit tools
-like Metasploit to attempt to exploit these vulnerabilities and gain access to 
-the target system.
-
-Example command: `msfconsole -h 192.168.0.1`
-
-This command will launch Metasploit on IP address 192.168.0.1. From there, you 
-can browse through available exploits and attempt to use them to gain access to 
-the target system.
-
-It's important to note that attempting to exploit vulnerabilities without 
-permission is illegal and unethical. Always obtain permission before performing 
-any security testing on a system or network.
-
-
-Proposed Command: nmap -p- -sS 192.168.0.1
-Execute this command? (Y/N): n
-Command execution skipped by user.
-
-┌──(SUDO)
-└─> using nmap only
-Chat memory length: 5
-Processing last 5 messages
-Chat memory tokens used: 951
-Reasoning context tokens: 277
-Final prompt tokens: 5903
-Context window: 15000
-Max response tokens: 15000
-Reserved tokens: 512
-===================
-
-⠴ 🐺 Reasoning... [37.1s]
-⏱️ 37.2s
-
-┌──(NIKITA 🐺)
-└─> 1. Understand the query: In this case, the user is asking for information 
-about how to use Nmap with the target IP address 192.168.0.1.
-
-1. Provide information: Nmap is a powerful network scanning tool that can be 
-used to identify open ports, running services, and potential vulnerabilities on 
-a target system or network. To use Nmap with the target IP address 192.168.0.1, 
-you would first need to install Nmap on your local machine.
-
-Example command: `sudo apt-get install nmap`
-
-This command will install Nmap on a Linux system using the APT package manager.
-
-Once Nmap is installed, you can use it to perform a port scan of the target IP 
-address 192.168.0.1. This will help identify any open ports and running services
-on the target system.
-
-Example command: `nmap -p- -sS 192.168.0.1`
-
-This command will perform a full system scan (-sS) of all ports (-p-) on IP 
-address 192.168.0.1.
-
-1. Ask clarifying questions: It's important to note that attempting to exploit 
-vulnerabilities without permission is illegal and unethical. Always obtain 
-permission before performing any security testing on a system or network. 
-Additionally, it's crucial to understand the target IP address's context and 
-purpose to ensure you don't accidentally scan or attempt to exploit any critical
-systems.
-
-It's also important to use Nmap responsibly, following its guidelines and 
-documentation. Always verify your commands before executing them, especially 
-when scanning sensitive systems or networks.
-
-
-Proposed Command: sudo apt-get install nmap
-Execute this command? (Y/N): 

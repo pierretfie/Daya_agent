@@ -602,12 +602,31 @@ def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, 
 
         # Generate new response with optimized settings
         try:
+            console.print("[cyan]Starting model inference...[/cyan]")
+            
+            # Add timer for inference
+            inference_start = time.time()
+            
             output = llm(final_prompt, 
                         max_tokens=max_tokens,
                         temperature=temperature,
                         stop=["User:", "\nUser:", "USER:"],
                         echo=False,  # Disable echo for faster response
                         stream=False)  # Disable streaming for faster response
+            
+            inference_time = time.time() - inference_start
+            console.print(f"[cyan]Inference completed in {inference_time:.2f}s[/cyan]")
+            
+            # Debug: Print raw output structure
+            if 'choices' in output and len(output['choices']) > 0:
+                choice = output['choices'][0]
+                text_length = len(choice.get('text', ''))
+                console.print(f"[green]Response generated: {text_length} chars[/green]")
+                if text_length == 0:
+                    console.print("[yellow]Warning: Empty response from model[/yellow]")
+            else:
+                console.print("[yellow]Warning: Unexpected output format from model[/yellow]")
+                console.print(f"Output keys: {list(output.keys())}")
             
             # Check GPU memory after inference to verify GPU usage
             if torch.cuda.is_available():
@@ -627,10 +646,15 @@ def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, 
             
             return output
         except Exception as e:
-            console.print(f"[yellow]Model inference error: {str(e)}[/yellow]")
+            console.print(f"[red]Model inference error: {str(e)}[/red]")
+            # Print full traceback for better debugging
+            import traceback
+            traceback.print_exc()
             return {"choices": [{"text": "I apologize, but I encountered an error processing your request."}]}
     except Exception as e:
-        console.print(f"[yellow]Error: {str(e)}[/yellow]")
+        console.print(f"[red]Error in get_cached_response: {str(e)}[/red]")
+        import traceback
+        traceback.print_exc()
         return {"choices": [{"text": "I apologize, but I encountered an error processing your request."}]}
 
 # Helper function for command confirmation and execution

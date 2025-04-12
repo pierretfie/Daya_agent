@@ -9,10 +9,6 @@ and free from metadata, JSON artifacts, and other unwanted content.
 import re
 import json
 from typing import Dict, Any, List, Union, Optional
-from rich.console import Console
-
-# Create a console instance at the module level
-console = Console()
 
 class ResponseCleaner:
     """
@@ -24,7 +20,6 @@ class ResponseCleaner:
         """Initialize the response cleaner"""
         self.json_pattern = re.compile(r'^\s*\{.*\}\s*$', re.DOTALL)
         self.command_pattern = re.compile(r'```(?:\w+)?\s*([^`]+)```|`([^`]+)`')
-        self.debug_mode = True  # Enable debug mode
         
         # Role prefixes to clean from responses
         self.role_prefixes = [
@@ -83,12 +78,7 @@ class ResponseCleaner:
                 - 'commands': List of extracted commands
                 - 'metadata': Any extracted metadata
         """
-        if self.debug_mode:
-            console.print(f"[cyan]Raw response length: {len(raw_response)} chars[/cyan]")
-            
         if not raw_response:
-            if self.debug_mode:
-                console.print("[yellow]Warning: Empty raw response[/yellow]")
             return {
                 'clean_text': "I apologize, but I couldn't generate a response. Please try again.",
                 'commands': [],
@@ -98,21 +88,11 @@ class ResponseCleaner:
         # Try to parse as JSON first
         json_data = self._extract_json(raw_response)
         
-        result = None
         if json_data:
-            result = self._process_json_response(json_data)
+            return self._process_json_response(json_data)
         else:
-            result = self._process_text_response(raw_response)
+            return self._process_text_response(raw_response)
             
-        if self.debug_mode:
-            console.print(f"[cyan]Cleaned response length: {len(result['clean_text'])} chars[/cyan]")
-            if len(result['clean_text']) == 0:
-                console.print("[yellow]Warning: Response was completely filtered out![/yellow]")
-                console.print("[yellow]First 100 chars of raw response: [/yellow]")
-                console.print(raw_response[:100] + "...")
-            
-        return result
-        
     def _extract_json(self, text: str) -> Optional[Dict[str, Any]]:
         """Extract and parse JSON from text if present"""
         if self.json_pattern.match(text):
@@ -300,22 +280,6 @@ class ResponseCleaner:
         if not text:
             return text
             
-        original_length = len(text)
-        original_text = text
-        
-        # Apply reasoning patterns more selectively
-        # Skip filtering if the text contains security-specific content we want to preserve
-        skip_patterns = ["exploit", "metasploit", "vulnerability", "security breach", "pentest"]
-        
-        # Check if we should skip aggressive filtering
-        should_skip_filtering = any(pattern in text.lower() for pattern in skip_patterns)
-        
-        if should_skip_filtering:
-            # Only apply minimal formatting cleanup
-            text = re.sub(r'\n{4,}', '\n\n\n', text)  # Limit consecutive newlines
-            text = text.strip()
-            return text
-            
         # Apply all reasoning patterns
         for pattern in self.reasoning_patterns:
             # Replace matching patterns with empty lines
@@ -326,32 +290,6 @@ class ResponseCleaner:
         
         # Clean up leading and trailing whitespace
         text = text.strip()
-        
-        # If we've filtered out too much (e.g., more than 80% of the content),
-        # revert to a less aggressive cleaning approach
-        if len(text) < original_length * 0.2 and original_length > 100:  # If more than 80% was filtered
-            console.print(f"[yellow]Warning: Filtered too much content ({((original_length - len(text)) / original_length * 100):.1f}%). Using less aggressive filtering.[/yellow]")
-            
-            # Try a more targeted approach - only remove specific reasoning patterns
-            text = original_text
-            
-            # Only remove the most obvious reasoning patterns
-            text = re.sub(r'^\s*\d+\.\s*UNDERSTAND:.*$', '', text, flags=re.MULTILINE)
-            text = re.sub(r'^\s*\d+\.\s*PLAN:.*$', '', text, flags=re.MULTILINE)
-            text = re.sub(r'^\s*\d+\.\s*TOOLS:.*$', '', text, flags=re.MULTILINE)
-            text = re.sub(r'^\s*\d+\.\s*SAFETY:.*$', '', text, flags=re.MULTILINE)
-            text = re.sub(r'^\s*\d+\.\s*EXECUTION:.*$', '', text, flags=re.MULTILINE)
-            text = re.sub(r'^\s*\d+\.\s*ANALYSIS:.*$', '', text, flags=re.MULTILINE)
-            
-            # Clean up multiple consecutive empty lines
-            text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
-            text = text.strip()
-            
-            if self.debug_mode:
-                console.print(f"[green]After less aggressive filtering: {len(text)} chars remaining[/green]")
-        
-        if self.debug_mode and len(text) < original_length * 0.5:  # If more than 50% was filtered
-            console.print(f"[yellow]Warning: Filtered {original_length - len(text)} chars ({((original_length - len(text)) / original_length * 100):.1f}%) during reasoning pattern removal[/yellow]")
         
         return text
         
@@ -366,7 +304,6 @@ class ResponseCleaner:
             str: Formatted text ready for display
         """
         clean_text = cleaned_response['clean_text']
-        original_length = len(clean_text)
         
         # Final cleanup to ensure no role prefixes or reasoning patterns remain
         clean_text = self._remove_role_prefixes(clean_text)
@@ -375,33 +312,6 @@ class ResponseCleaner:
         # Trim leading/trailing whitespace and make sure there aren't excessive blank lines
         clean_text = re.sub(r'\n{3,}', '\n\n', clean_text)
         clean_text = clean_text.strip()
-        
-        if self.debug_mode and len(clean_text) == 0 and original_length > 0:
-            console.print("[red]Error: Final formatting completely removed the response![/red]")
-            
-            # Examine metadata for clues about the topic
-            metadata = cleaned_response.get('metadata', {})
-            commands = cleaned_response.get('commands', [])
-            
-            # Check if this is security-related from the command list
-            is_security_related = any(cmd in ' '.join(commands).lower() for cmd in ['nmap', 'exploit', 'scan', 'hack', 'metasploit'])
-            
-            # Provide an appropriate fallback response
-            if is_security_related:
-                return """
-I noticed you're asking about security tools or techniques. Here are some important points:
-
-1. Always ensure you have proper authorization before performing any security testing
-2. For network scanning with nmap, start with less intrusive options like:
-   - Basic port scan: `nmap -p 1-1000 <target>`
-   - Service detection: `nmap -sV <target>`
-   - OS detection: `nmap -O <target>`
-
-For more specific guidance, please clarify your authorization status and testing goals.
-""".strip()
-            else:
-                # Generic fallback
-                return "I apologize, but I couldn't generate a proper response to your query. Could you please rephrase or provide more details?"
         
         return clean_text
 

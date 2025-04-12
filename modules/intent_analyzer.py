@@ -83,322 +83,75 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
             "should_execute": False,
             "targets": [],
             "follow_up_suggestions": [],
-            "security_context": None  # New field for security context
+            "security_context": None
         }
         
         input_lower = user_input.lower()
         
-        # Check for security-related queries first
-        security_keywords = {
-            "exploit": {
-                "context": "exploitation",
-                "description": "Understanding security vulnerabilities and their implications",
-                "ethical_note": "Focus on defensive security and understanding vulnerabilities for protection"
-            },
-            "hack": {
-                "context": "security_testing",
-                "description": "Security testing and assessment methodologies",
-                "ethical_note": "Emphasize ethical security practices and responsible disclosure"
-            },
-            "attack": {
-                "context": "attack_vectors",
-                "description": "Understanding attack vectors and defense strategies",
-                "ethical_note": "Focus on defensive measures and protection strategies"
-            },
-            "scan": {
-                "context": "security_scanning",
-                "description": "Network and security scanning methodologies",
-                "ethical_note": "Emphasize authorized scanning and security assessment"
-            },
-            "reconnaissance": {
-                "context": "information_gathering",
-                "description": "Understanding information gathering techniques",
-                "ethical_note": "Focus on defensive security and protecting against reconnaissance"
-            }
+        # Enhanced pattern matching that doesn't rely on starting words
+        patterns = {
+            # Security-related patterns
+            r'(?:exploit|hack|attack|scan|reconnaissance)\s+(?:port|service|system|target|network)': "security_query",
+            r'(?:perform|run|do|execute|conduct)\s+(?:an?\s+)?(?:security|scan|test|check)': "security_action_request",
+            
+            # Command patterns
+            r'(?:run|execute|launch|start)\s+([a-zA-Z0-9_-]+)': "command_request",
+            r'(?:use|try|launch)\s+([a-zA-Z0-9_-]+)\s+(?:to|for|on)': "command_request",
+            
+            # Information request patterns
+            r'(?:what\s+is|what\'s|explain|describe|tell\s+me\s+about)\s+([a-zA-Z0-9_-]+)': "information_request",
+            r'how\s+(?:do(?:es)?|would|can|could)\s+([a-zA-Z0-9_-]+)\s+work': "information_request",
+            
+            # Action patterns
+            r'(?:perform|run|do|execute|conduct)\s+(?:an?\s+)?(\w+(?:\s+\w+){0,2})': "action_request",
+            r'(?:start|begin|initiate)\s+(?:an?\s+)?(\w+(?:\s+\w+){0,2})': "action_request",
+            r'(?:try|attempt)\s+(?:an?\s+)?(\w+(?:\s+\w+){0,2})': "action_request"
         }
         
-        # Check for security-related keywords
-        for keyword, context in security_keywords.items():
-            if keyword in input_lower:
+        # Check all patterns in parallel
+        for pattern, intent in patterns.items():
+            match = re.search(pattern, input_lower)
+            if match:
+                analysis["intent"] = intent
+                if intent == "command_request":
+                    request_tool = match.group(1)
+                    if request_tool in self.system_commands:
+                        analysis["command"] = request_tool
+                        analysis["should_execute"] = True
+                elif intent == "action_request":
+                    analysis["action_type"] = match.group(1).strip()
+                break
+        
+        # If no pattern matched, use semantic analysis
+        if analysis["intent"] == "general_query":
+            # Check for security-related keywords anywhere in the text
+            security_keywords = ["exploit", "hack", "attack", "scan", "reconnaissance", 
+                               "vulnerability", "security", "pentest", "brute force"]
+            if any(keyword in input_lower for keyword in security_keywords):
                 analysis["intent"] = "security_query"
-                analysis["security_context"] = context
                 analysis["technical_context"] = "security_related"
-                break
-        
-        # Check for action-oriented queries like "perform X on Y"
-        action_patterns = [
-            r'^(?:perform|run|do|execute|conduct)\s+(?:an?\s+)?(\w+(?:\s+\w+){0,2})',  # perform X
-            r'^(?:start|begin|initiate)\s+(?:an?\s+)?(\w+(?:\s+\w+){0,2})',  # start X
-            r'^(?:try|attempt)\s+(?:an?\s+)?(\w+(?:\s+\w+){0,2})'  # try X
-        ]
-        
-        is_action_query = False
-        action_type = None
-        
-        for pattern in action_patterns:
-            match = re.search(pattern, input_lower)
-            if match:
-                is_action_query = True
-                action_type = match.group(1).strip()
-                break
-        
-        # Process action-oriented queries
-        if is_action_query:
-            analysis["intent"] = "action_request"
-            analysis["action_type"] = action_type
             
-            # Check for security-related actions that need special handling
-            security_actions = ["exploit", "attack", "hack", "pentest", "scan", "reconnaissance", 
-                               "enumeration", "footprinting", "information gathering", "vuln", 
-                               "vulnerability", "brute force", "bruteforce"]
-            
-            if any(security_action in action_type for security_action in security_actions):
-                analysis["intent"] = "security_action_request"
-                analysis["technical_context"] = "security_action"
-                # Add ethical context for security actions
-                analysis["ethical_context"] = "This request involves security-related actions. I will provide information about security concepts and defensive measures while adhering to ethical guidelines."
+            # Check for command-related keywords
+            command_keywords = ["run", "execute", "launch", "start", "use", "try"]
+            if any(keyword in input_lower for keyword in command_keywords):
+                analysis["intent"] = "command_request"
         
-        # First, check if this is an explicit command request
-        explicit_command_patterns = [
-            r'^(?:run|execute|launch|start)\s+([a-zA-Z0-9_-]+)',  # Starting with run/execute
-            r'^(?:use|try|launch)\s+([a-zA-Z0-9_-]+)\s+(?:to|for|on)',  # Use X to/for/on
-            r'^(?:can\s+you\s+)?(?:run|execute)\s+([a-zA-Z0-9_-]+)\s+for\s+me', # Run X for me
-            r'^(?:run|execute|start|launch)\s+a\s+([a-zA-Z0-9_-]+)\s+scan'  # Run a X scan
-        ]
-        
-        explicit_request = False
-        request_tool = None
-        
-        for pattern in explicit_command_patterns:
-            match = re.search(pattern, input_lower)
-            if match:
-                explicit_request = True
-                request_tool = match.group(1)
-                break
-                
-        # Explicitly check for explanation/information requests
-        info_request_patterns = [
-            r'^(?:what\s+is|what\'s|explain|describe|tell\s+me\s+about)\s+([a-zA-Z0-9_-]+)',
-            r'^how\s+(?:do(?:es)?|would|can|could)\s+([a-zA-Z0-9_-]+)\s+work',
-            r'^(?:what|how)\s+(?:does|do|would|is|are)\s+([a-zA-Z0-9_-]+)',
-            r'^(?:compare|difference\s+between|versus|vs\.?)\s+([a-zA-Z0-9_-]+)',
-            r'^(?:tell|show)\s+me\s+(more|about)\s+([a-zA-Z0-9_-]+)'
-        ]
-        
-        is_info_request = False
-        for pattern in info_request_patterns:
-            if re.search(pattern, input_lower):
-                is_info_request = True
-                break
-        
-        # Set intent based on pattern matching
-        if explicit_request:
-            analysis["intent"] = "command_request"
-            if request_tool in self.system_commands:
-                analysis["command"] = request_tool
-                analysis["should_execute"] = True
-        elif is_info_request:
-            analysis["intent"] = "information_request"
-            # Check if this is a security-related information request
-            if any(keyword in input_lower for keyword in security_keywords.keys()):
-                analysis["technical_context"] = "security_information"
-                analysis["intent"] = "security_information_request"
-        
-        # Extract targets - this should happen regardless of intent
+        # Extract targets regardless of intent
         detected_targets = extract_targets(user_input)
         if detected_targets:
-            # Validate each target
             valid_targets = []
             for target in detected_targets:
-                # Check for valid IP/CIDR
                 if re.match(r'(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?', target):
                     valid_targets.append(target)
-                # Check for valid hostname
                 elif re.match(r'(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}', target):
                     valid_targets.append(target)
-                # Check for valid domain
                 elif re.match(r'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$', target):
                     valid_targets.append(target)
             
             if valid_targets:
                 analysis["targets"] = valid_targets
                 analysis["technical_context"] = "target_detected"
-                # Add ethical context for targeting
-                analysis["ethical_context"] = "Target specified. Will provide information about security concepts while adhering to ethical guidelines."
-            else:
-                # If no valid targets found, set a specific error context
-                analysis["technical_context"] = "invalid_target"
-                analysis["error"] = "Invalid target specification. Please provide a valid IP address, hostname, or domain."
         
-        # --- PRIORITY 1: Command Intent Detection ---
-        command_triggers = ["run", "execute", "scan", "check", "show", "list", "find", "get", "what is", "tell me"]
-        potential_command_terms = command_triggers + list(self.system_commands.keys())
-        command_found = None
-        trigger_word = None
-
-        # Check if input starts with a trigger or contains a known command
-        for term in potential_command_terms:
-            pattern = r'\b' + re.escape(term) + r'\b'
-            match = re.search(pattern, input_lower)
-            if match:
-                command_found = term
-                potential_cmd_str = user_input[match.end():].strip()
-                
-                if term in self.system_commands:
-                    analysis["command"] = user_input
-                    if input_lower.startswith(("help", "man")):
-                        analysis["intent"] = "help_request"
-                        analysis["should_execute"] = False
-                    else:
-                        analysis["intent"] = "command_execution"
-                        analysis["should_execute"] = any(trigger in input_lower.split() for trigger in ["run", "execute"])
-                elif term in command_triggers:
-                    analysis["intent"] = "command_request"
-                    mentioned_tool = None
-                    for tool in self.system_commands.keys():
-                        tool_pattern = r'\b' + re.escape(tool) + r'\b'
-                        if re.search(tool_pattern, input_lower):
-                            mentioned_tool = tool
-                            break
-
-                    if mentioned_tool:
-                        analysis["command"] = user_input
-                        analysis["should_execute"] = any(trigger in input_lower.split() for trigger in ["run", "execute"])
-                    else:
-                        analysis["command"] = None
-                        analysis["should_execute"] = False
-                break
-
-        # --- PRIORITY 2: Target-based Analysis ---
-        if analysis["targets"]:
-            # Generate comprehensive follow-up suggestions based on detected targets
-            for target in analysis["targets"]:
-                if re.match(r'(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?', target):  # IP or CIDR
-                    # Network scanning options
-                    analysis["follow_up_suggestions"].extend([
-                        f"Would you like me to scan {target} for open ports?",
-                        f"I can check if {target} is responding to ping.",
-                        f"Would you like to see what services are running on {target}?",
-                        f"Should I perform a vulnerability scan on {target}?",
-                        f"Would you like me to check for common web vulnerabilities on {target}?",
-                        f"I can scan {target} for specific ports or services you're interested in.",
-                        f"Would you like to see what operating system {target} is running?",
-                        f"Should I check if {target} has any exposed databases?",
-                        f"Would you like me to scan {target} for common misconfigurations?",
-                        f"I can check if {target} has any exposed admin interfaces."
-                    ])
-                    
-                    # Network mapping options
-                    analysis["follow_up_suggestions"].extend([
-                        f"Would you like me to map the network topology around {target}?",
-                        f"I can check what other hosts are in the same network as {target}.",
-                        f"Should I identify the network services and their versions on {target}?",
-                        f"Would you like to see the network path to {target}?",
-                        f"I can check for any network security devices protecting {target}."
-                    ])
-                    
-                    # Security assessment options
-                    analysis["follow_up_suggestions"].extend([
-                        f"Would you like me to check {target} for common security misconfigurations?",
-                        f"I can scan {target} for known vulnerabilities in running services.",
-                        f"Should I check if {target} is running any outdated or vulnerable software?",
-                        f"Would you like me to analyze {target}'s security posture?",
-                        f"I can check if {target} has any exposed sensitive information."
-                    ])
-                
-                elif re.match(r'(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}', target):  # Hostname
-                    # DNS and resolution options
-                    analysis["follow_up_suggestions"].extend([
-                        f"Would you like me to resolve the DNS for {target}?",
-                        f"I can check all DNS records associated with {target}.",
-                        f"Should I verify the SSL/TLS configuration of {target}?",
-                        f"Would you like to see the IP addresses associated with {target}?",
-                        f"I can check if {target} has any subdomains."
-                    ])
-                    
-                    # Web-specific options
-                    analysis["follow_up_suggestions"].extend([
-                        f"Would you like me to scan {target} for web vulnerabilities?",
-                        f"I can check if {target} has any exposed admin panels.",
-                        f"Should I analyze the security headers of {target}?",
-                        f"Would you like me to check for common web misconfigurations on {target}?",
-                        f"I can scan {target} for exposed sensitive files."
-                    ])
-                    
-                    # General security options
-                    analysis["follow_up_suggestions"].extend([
-                        f"Would you like me to check if {target} is responding to ping?",
-                        f"I can scan {target} for open ports and services.",
-                        f"Should I check if {target} has any known vulnerabilities?",
-                        f"Would you like to see what services are running on {target}?",
-                        f"I can analyze the security posture of {target}."
-                    ])
-        
-        # --- PRIORITY 3: Other Context Analysis ---
-        if analysis["intent"] is None:
-            # Check for personal references
-            personal_patterns = {
-                r'(?:network|from network|in network)\s+(\w+)': "network_contact",
-                r'(\w+)\s+(?:from|in) network': "network_contact"
-            }
-            for pattern, ref_type in personal_patterns.items():
-                match = re.search(pattern, input_lower)
-                if match:
-                    potential_name = match.group(1)
-                    if potential_name not in self.system_commands:
-                        analysis["personal_reference"] = {
-                            "name": potential_name,
-                            "type": ref_type,
-                            "context": "network"
-                        }
-                        analysis["intent"] = "network_contact_query"
-                        break
-
-            # Analyze emotional context
-            emotional_indicators = {
-                "urgency": ["urgent", "asap", "quick", "hurry"],
-                "frustration": ["frustrated", "angry", "annoyed"],
-                "concern": ["worried", "concerned", "troubled"],
-                "curiosity": ["wonder", "curious", "interested"]
-            }
-            for emotion, indicators in emotional_indicators.items():
-                if any(indicator in input_lower for indicator in indicators):
-                    analysis["emotional_context"] = emotion
-                    break
-
-            # Analyze technical context
-            technical_indicators = {
-                "network": ["network", "ip", "connection", "wifi", "ethernet"],
-                "security": ["security", "secure", "protection", "vulnerability"],
-                "system": ["system", "computer", "machine", "device"]
-            }
-            for context, indicators in technical_indicators.items():
-                if any(indicator in input_lower for indicator in indicators):
-                    analysis["technical_context"] = context
-                    break
-
-            # Determine final intent based on non-command context
-            if analysis["intent"] == "network_contact_query":
-                if analysis["emotional_context"] == "urgency":
-                    analysis["intent"] = "urgent_network_contact"
-                elif analysis["emotional_context"] == "concern":
-                    analysis["intent"] = "network_contact_concern"
-            elif analysis["intent"] is None:
-                if analysis["technical_context"]:
-                    analysis["intent"] = f"{analysis['technical_context']}_query"
-                else:
-                    analysis["intent"] = "general_query"
-
-        # Generate response for non-command queries with targets
-        if analysis["intent"] in ["general_query", "network_query"] and analysis["targets"]:
-            target = analysis["targets"][0]  # Use first target for response
-            if re.match(r'(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?', target):  # IP or CIDR
-                analysis["response"] = f"{target} is a network address. I can help you with:\n" + \
-                    "\n".join(f"- {suggestion}" for suggestion in analysis["follow_up_suggestions"][:3])
-            elif re.match(r'(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}', target):  # Hostname
-                analysis["response"] = f"{target} appears to be a hostname. I can help you with:\n" + \
-                    "\n".join(f"- {suggestion}" for suggestion in analysis["follow_up_suggestions"][:3])
-
         return analysis
 
     @lru_cache(maxsize=128)

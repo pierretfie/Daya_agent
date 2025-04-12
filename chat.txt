@@ -12,8 +12,8 @@ Max response tokens: 15000
 Reserved tokens: 512
 ===================
 
-⠋ 🐺 Reasoning... [1.5s]
-⏱️ 1.6s
+⠙ 🐺 Reasoning... [1.6s]
+⏱️ 1.7s
 
 ┌──(NIKITA 🐺)
 └─> Hello! How can I assist you today?
@@ -36,98 +36,48 @@ Reserved tokens: 512
 ⏱️ 1.6s
 
 ┌──(NIKITA 🐺)
-└─> I'd be happy to explain about Burpsuite. This appears to be a topic I should
-have information about, but I'm experiencing an issue retrieving the complete 
-details. Could you please rephrase your question or ask for specific aspects of 
-Burpsuite you're interested in?
+└─> I'd be happy to explain about Burpsuite. To get a complete response, try 
+asking just 'Burpsuite' without the 'what is' prefix, or ask about a specific 
+aspect of Burpsuite you're interested in.
 
 
 ┌──(SUDO)
-└─> burpsuite
+└─> what is rockyou wordlist
 Chat memory length: 5
 Processing last 5 messages
-Chat memory tokens used: 116
-Reasoning context tokens: 352
+Chat memory tokens used: 101
+Reasoning context tokens: 353
 Follow-up questions tokens: 60
-Final prompt tokens: 5205
+Final prompt tokens: 5196
 Context window: 15000
 Max response tokens: 15000
 Reserved tokens: 512
 ===================
 
-⠼ 🐺 Reasoning... [37.1s]
-⏱️ 37.2s
+⠧ 🐺 Reasoning... [1.3s]
+⏱️ 1.4s
 
 ┌──(NIKITA 🐺)
-└─> Burpsuite is a powerful web application testing tool that helps developers 
-find and fix issues in their websites. It allows users to inspect requests and 
-responses, analyze HTTP headers and payloads, and perform various types of tests
-such as performance, security, and functionality checks. The tool also provides 
-advanced features like script injection, SSL/TLS testing, and more.
-
-Key Features:
-
-1. Intercept and inspect requests and responses
-2. Analyze HTTP headers and payloads
-3. Perform various types of web application tests
-4. Generate reports and logs
-5. Integrate with other tools like JMeter and Postman
-6. Script injection for testing purposes
-7. SSL/TLS testing to identify vulnerabilities
-8. Advanced features like XML and JSON parsing, cookie manipulation, and more
-
-Basic Syntax:
-Burpsuite uses a simple command-line interface with basic syntax for 
-intercepting and analyzing requests. Users can use the following commands to 
-start Burpsuite:
-
-1. `burpsuite -s`: Starts Burpsuite in single-host mode, capturing all traffic 
-on port 8080.
-2. `burpsuite -s --port=8080 --proxy-server=<your-proxy-address>`: Captures all 
-traffic on port 8080 using a specified proxy server.
-
-Common Use Cases:
-Burpsuite is widely used for web application testing, performance optimization, 
-and security analysis. Some common use cases include:
-
-1. Performance testing: Burpsuite can be used to simulate high traffic loads and
-measure the application's response time and throughput.
-2. Security testing: The tool allows users to perform various types of security 
-tests like SQL injection, cross-site scripting (XSS), and more.
-3. Functionality testing: Burpsuite can be used to test different 
-functionalities of web applications, such as login forms, search functionality, 
-and more.
-4. Debugging: The tool provides detailed information about requests and 
-responses, making it easy to identify issues in the application.
-
-Important Flags:
-Burpsuite offers various flags that users can use to customize their testing 
-experience. Some important flags include:
-
-1. `-s`: Starts Burpsuite in single-host mode.
-2. `--port=<port>`: Specifies the port number on which Burpsuite should listen 
-for traffic.
-3. `--proxy-server=<proxy-address>`: Uses a specified proxy server to capture 
-traffic.
-4. `--script- injection`: Enables script injection testing mode.
-5. `--ssl-test`: Performs SSL/TLS testing.
-6. `--log-file=<filename>`: Logs the captured data to a specific file.
-7. `--output-format=<format>`: Specifies the output format for reports and logs 
-(e.g., JSON, CSV).
-
-Example Commands:
-Here are some example commands you can use with Burpsuite:
-
-1. `burpsuite -s --port=8080 --proxy-server=<your-proxy-address>`: Captures all 
-traffic on port 8080 using a specified proxy server.
-2. `burpsuite -s --script- injection`: Enables script injection testing mode.
-3. `burpsuite -s --ssl-test`: Performs SSL/TLS testing.
-4. `burpsuite -s --log-file=<filename>`: Logs the captured data to a specific 
-file.
-5. `burpsuite -s --output-format=<format>`: Specifies the output format for 
-reports and logs (e.g., JSON, CSV).
+└─> I'd be happy to explain about . To get a complete response, try asking just 
+'' without the 'what is' prefix, or ask about a specific aspect of  you're 
+interested in.
 
 
-Proposed Command: burpsuite -s
-Execute this command? (Y/N): n
-Command execution skipped by user.
+┌──(SUDO)
+└─> define the rockyou wordlist
+Chat memory length: 7
+Processing last 7 messages
+Chat memory tokens used: 171
+Reasoning context tokens: 352
+Follow-up questions tokens: 60
+Final prompt tokens: 5270
+Context window: 15000
+Max response tokens: 15000
+Reserved tokens: 512
+===================
+
+⠇ 🐺 Reasoning... [1.4s]
+⏱️ 1.5s
+
+┌──(NIKITA 🐺)
+└─> --- Define The Rockyou ---

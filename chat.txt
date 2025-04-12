@@ -1,104 +1,43 @@
+──(NIKITA 🐺)
+└─> Nikita 🐺: Exploiting port 22 on a target requires understanding how SSH 
+works and what vulnerabilities might exist on the system. SSH is a protocol for 
+secure remote login to Unix-based systems. It uses public key cryptography to 
+authenticate users and encrypt data in transit.
 
-✅ Common prompts prefetched successfully
+When exploiting port 22, it's important to ensure that you have permission to 
+connect to the target and that you are using the correct credentials. If you do 
+not have permission, attempting to connect could result in a denial of service 
+or other security incidents. Additionally, if the SSH server is not properly 
+configured, it may be vulnerable to attacks such as brute force login attempts 
+or buffer overflows.
+
+Before attempting any exploits, it's recommended to perform a vulnerability scan
+of the target system to identify any potential weaknesses. This can help you 
+prioritize your efforts and focus on the most critical issues first.
+
+If you do decide to proceed with an exploit, there are several tools available 
+that can help you automate the process. Some popular options include Metasploit,
+Nmap, and Burp Suite. These tools typically require some technical knowledge and
+may require additional configuration depending on your specific use case.
+
+It's important to note that exploiting vulnerabilities in a system without 
+permission is illegal and unethical. It's always best to obtain permission 
+before attempting any security tests or exploits, and to follow ethical 
+guidelines such as the OWASP Cheat Sheet for responsible disclosure of 
+vulnerabilities.
+
 
 ┌──(SUDO)
-└─> perform an exploit on google.com
-Chat memory length: 10
-Processing last 10 messages
-Chat memory tokens used: 651
-Reasoning context tokens: 499
-Follow-up questions tokens: 66
-Final prompt tokens: 5908
+└─> proceed with exploit
+Chat memory length: 3
+Processing last 3 messages
+Chat memory tokens used: 504
+Reasoning context tokens: 360
+Follow-up questions tokens: 69
+Final prompt tokens: 5609
 Context window: 15000
 Max response tokens: 15000
 Reserved tokens: 512
 ===================
 
-⠦ 🐺 Reasoning... [2.0s]
-⏱️ 2.1s
-
-┌──(NIKITA 🐺)
-└─> --- Perform Exploit ---
-
-
-┌──(SUDO)
-└─> exploit google.com
-Chat memory length: 10
-Processing last 10 messages
-Chat memory tokens used: 643
-Reasoning context tokens: 358
-Follow-up questions tokens: 66
-Final prompt tokens: 5755
-Context window: 15000
-Max response tokens: 15000
-Reserved tokens: 512
-===================
-
-⠧ 🐺 Reasoning... [1.3s]
-⏱️ 1.4s
-
-┌──(NIKITA 🐺)
-└─> --- Exploiting ---
-
-
-┌──(SUDO)
-└─> how to exploit google.com
-Chat memory length: 10
-Processing last 10 messages
-Chat memory tokens used: 632
-Reasoning context tokens: 359
-Follow-up questions tokens: 66
-Final prompt tokens: 5749
-Context window: 15000
-Max response tokens: 15000
-Reserved tokens: 512
-===================
-
-⠙ 🐺 Reasoning... [2.4s]
-⏱️ 2.5s
-
-┌──(NIKITA 🐺)
-└─> --- Perform Information Gathering On ---
---- Perform Information Gathering ---
---- Perform Information Gathering ---
-
-
-┌──(SUDO)
-└─> what is an exploit
-Chat memory length: 10
-Processing last 10 messages
-Chat memory tokens used: 659
-Reasoning context tokens: 371
-Follow-up questions tokens: 65
-Final prompt tokens: 5784
-Context window: 15000
-Max response tokens: 15000
-Reserved tokens: 512
-===================
-
-⠹ 🐺 Reasoning... [6.5s]
-⏱️ 6.6s
-
-┌──(NIKITA 🐺)
-└─> An exploit is a technique used by attackers to take advantage of 
-vulnerabilities in software, hardware, or network systems. It involves finding 
-and manipulating these vulnerabilities to gain unauthorized access, steal data, 
-cause damage, or perform other malicious actions. Exploits can be used for 
-various purposes, including cybercrime, espionage, and political activism. They 
-are often developed by hackers and sold on the black market or used in targeted 
-attacks. To protect against exploits, it is important to keep software and 
-systems up-to-date, use strong passwords, and implement security measures such 
-as firewalls and intrusion detection systems.
-
-
-┌──(SUDO)
-└─> how to use nmap
-Chat memory length: 10
-Processing last 10 messages
-Chat memory tokens used: 359
-Reasoning context tokens: 379
-Follow-up questions tokens: 65
-Final prompt tokens: 5491
-Context window: 15000
-Max response tokens: 15000
-Reserved tokens: 512
+^C

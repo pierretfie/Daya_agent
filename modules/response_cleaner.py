@@ -255,7 +255,7 @@ class ResponseCleaner:
             'metadata': metadata
         }
         
-    def _extract_commands(self, text: str) -> List[str]:
+    def _extract_commands(self, text: str) -> Dict[str, Any]:
         """Extract commands from code blocks in text"""
         commands = []
         
@@ -266,8 +266,88 @@ class ResponseCleaner:
             command = match[0] if match[0] else match[1]
             if command:
                 commands.append(command.strip())
-                
-        return commands
+        
+        # Return both commands and text
+        return {
+            "text": text,
+            "commands": commands
+        }
+        
+    def _extract_code_blocks(self, text: str) -> Dict[str, Any]:
+        """Extract code blocks from text"""
+        code_blocks = []
+        
+        # Pattern to match code blocks with language specifiers
+        code_pattern = re.compile(r'```(?:\w+)?\s*([^`]+)```', re.MULTILINE | re.DOTALL)
+        
+        # Find and extract all code blocks
+        matches = code_pattern.findall(text)
+        for idx, match in enumerate(matches):
+            code_blocks.append({
+                "content": match.strip(),
+                "language": "unknown",  # Default language
+                "id": f"code_{idx}"
+            })
+            
+        # Replace code blocks with placeholders
+        cleaned_text = text
+        for idx, block in enumerate(code_blocks):
+            placeholder = f"[CODE_BLOCK_{idx}]"
+            cleaned_text = code_pattern.sub(placeholder, cleaned_text, count=1)
+            
+        return {
+            "text": cleaned_text,
+            "codeblocks": code_blocks
+        }
+        
+    def _normalize_text(self, text: str) -> Dict[str, Any]:
+        """Normalize text by removing special formatting and replacing with placeholders"""
+        placeholders = {}
+        
+        # Remove any role prefixes
+        text = self._remove_role_prefixes(text)
+        
+        # Remove reasoning patterns
+        text = self._remove_reasoning_patterns(text)
+        
+        # Replace section headers with cleaner format
+        header_pattern = re.compile(r'^#{1,6}\s*(.*?)\s*$', re.MULTILINE)
+        headers = header_pattern.findall(text)
+        
+        for idx, header in enumerate(headers):
+            placeholder = f"[HEADER_{idx}]"
+            placeholders[placeholder] = f"**{header}**"
+            text = header_pattern.sub(placeholder, text, count=1)
+            
+        # Normalize bullet points
+        bullet_pattern = re.compile(r'^\s*[-*•]\s+(.*?)$', re.MULTILINE)
+        bullets = bullet_pattern.findall(text)
+        
+        for idx, bullet in enumerate(bullets):
+            placeholder = f"[BULLET_{idx}]"
+            placeholders[placeholder] = f"• {bullet}"
+            text = bullet_pattern.sub(placeholder, text, count=1)
+            
+        # Normalize line breaks (replace 3+ consecutive newlines with 2)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        # Trim leading/trailing whitespace
+        text = text.strip()
+        
+        return {
+            "text": text,
+            "placeholders": placeholders
+        }
+        
+    def _replace_placeholders(self, text: str, placeholders: Dict[str, str]) -> str:
+        """Replace placeholders with their values"""
+        result = text
+        
+        # Replace each placeholder with its value
+        for placeholder, value in placeholders.items():
+            result = result.replace(placeholder, value)
+            
+        return result
         
     def _remove_role_prefixes(self, text: str) -> str:
         """Remove role prefixes from text"""

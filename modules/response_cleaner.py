@@ -45,6 +45,9 @@ class ResponseCleaner:
             # Pattern for the "When discussing security tools" section
             re.compile(r'\n*When discussing security tools:\s*\n1\. Always include ethical usage disclaimer\s*\n2\. Provide accurate technical information\s*\n3\. Focus on defensive/legitimate use cases\s*\n4\. Include legal considerations\s*\n5\. Recommend proper learning resources\s*\n*', re.MULTILINE),
             
+            # Pattern for the new instruction format
+            re.compile(r'\n*INTERNAL_INSTRUCTIONS \(DO NOT INCLUDE IN RESPONSE\):\s*\n.*?\nEND_INTERNAL_INSTRUCTIONS\s*\n*', re.DOTALL),
+            
             # Add other instruction patterns that might leak into responses
             re.compile(r'\n*COMMAND ACCURACY REQUIREMENTS:\s*\n', re.MULTILINE),
             re.compile(r'\n*GENERAL GUIDELINES:\s*\n', re.MULTILINE),

@@ -102,6 +102,10 @@ class ResponseCleaner:
                 "placeholders": {}
             }
             
+        # First, remove any prompt template instructions that might have leaked into the response
+        for pattern in self.instruction_patterns:
+            response = pattern.sub('', response)
+            
         # Check for extremely short responses (likely issues with response generation)
         if len(response.strip()) < 20:
             # Handle security-related short responses
@@ -216,6 +220,10 @@ class ResponseCleaner:
                     cleaned_text = f"I'd be happy to provide information about {topic}. To get a complete response, try asking just '{topic}' without the question prefix, or ask about a specific aspect of {topic} you're interested in."
         
         # Apply final formatting
+        # One more pass to remove any instruction patterns
+        for pattern in self.instruction_patterns:
+            cleaned_text = pattern.sub('', cleaned_text)
+            
         result = {
             "text": cleaned_text,
             "commands": command_result["commands"],
@@ -482,35 +490,50 @@ class ResponseCleaner:
         for line in lines:
             cleaned_line = line
             for pattern in self.role_prefix_patterns:
+                cleaned_line = pattern.sub('', cleaned_line)
+            cleaned_lines.append(cleaned_line)
+            
+        return '\n'.join(cleaned_lines)
+        
+    def _remove_reasoning_patterns(self, text: str) -> str:
+        """Remove reasoning steps and analysis indicators from text"""
+        if not text:
+            return text
+            
+        # Apply all reasoning patterns
+        for pattern in self.reasoning_patterns:
+            text = pattern.sub('', text)
+            
+        # Remove instruction patterns that might have leaked from the prompt template
+        for pattern in self.instruction_patterns:
+            text = pattern.sub('', text)
+            
+        # Clean up multiple consecutive empty lines
+        text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+            
+        # Clean up leading and trailing whitespace
+        text = text.strip()
+            
         return text
+        
+    def format_for_display(self, cleaned_result: Dict[str, Any]) -> str:
+        """Format the cleaned result for display to the user"""
+        if not cleaned_result:
+            return "I apologize, but I couldn't generate a proper response. Please try rephrasing your question."
+                
+        text = ""
+        if "text" in cleaned_result:
+            text = cleaned_result["text"]
+        elif "clean_text" in cleaned_result:
+            text = cleaned_result["clean_text"]
+        else:
+            return "I apologize, but I couldn't generate a proper response. Please try rephrasing your question."
             
-    # Apply all reasoning patterns
-    for pattern in self.reasoning_patterns:
-        text = pattern.sub('', text)
-        
-    # Remove instruction patterns that might have leaked from the prompt template
-    for pattern in self.instruction_patterns:
-        text = pattern.sub('', text)
+        # Final cleanup of any instruction patterns that might have leaked
+        for pattern in self.instruction_patterns:
+            text = pattern.sub('', text)
             
-    # Clean up multiple consecutive empty lines
-    text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
-        
-    # Clean up leading and trailing whitespace
-    text = text.strip()
-        
-    return text
-        
-def format_for_display(self, cleaned_result: Dict[str, Any]) -> str:
-    """Format the cleaned result for display to the user"""
-    if not cleaned_result:
-        return "I apologize, but I couldn't generate a proper response. Please try rephrasing your question."
-            
-    if "text" in cleaned_result:
-        return cleaned_result["text"]
-    elif "clean_text" in cleaned_result:
-        return cleaned_result["clean_text"]
-    else:
-        return "I apologize, but I couldn't generate a proper response. Please try rephrasing your question."
+        return text
 
 
 if __name__ == "__main__":

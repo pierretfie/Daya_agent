@@ -22,6 +22,9 @@ class ResponseCleaner:
         self.command_pattern = re.compile(r'```(?:\w+)?\s*([^`]+)```|`([^`]+)`')
         self.title_only_pattern = re.compile(r'^---\s*(What|How|Why|When|Where|Who)\s+.*\s*---$', re.IGNORECASE)
         
+        # Add pattern to detect questions in user input
+        self.question_pattern = re.compile(r'^(what|how|why|when|where|who)\s+(is|are|does|do|can|should|would)\s+', re.IGNORECASE)
+        
         # Role prefixes to clean from responses
         self.role_prefixes = [
             r'^\s*Nikita\s*:\s*',
@@ -122,25 +125,41 @@ class ResponseCleaner:
                 # Handle cases like "Is X" where X is the actual topic
                 if topic.lower().startswith("is "):
                     topic = topic[3:].strip()
+                elif topic.lower().startswith("are "):
+                    topic = topic[4:].strip()
+                elif topic.lower().startswith("does "):
+                    topic = topic[5:].strip()
+                elif topic.lower().startswith("do "):
+                    topic = topic[3:].strip()
+                
+                # Try to get a more complete response by using the single word topic
+                # This helps with cases where "what is X" fails but just "X" works
+                if len(topic.split()) >= 1:
+                    # Get the main topic word (usually the first word or two)
+                    main_topic = topic.split()[0].lower()
+                    
+                    # For compound topics like "burp suite", include both words
+                    if len(topic.split()) > 1 and len(topic.split()[0]) <= 5:
+                        main_topic = " ".join(topic.split()[:2]).lower()
                 
                 # Generate a helpful fallback response based on the question type and topic
                 if question_type == 'what':
                     return {
-                        "text": f"I'd be happy to explain about {topic}. This appears to be a topic I should have information about, but I'm experiencing an issue retrieving the complete details. Could you please rephrase your question or ask for specific aspects of {topic} you're interested in?",
+                        "text": f"I'd be happy to explain about {topic}. To get a complete response, try asking just '{topic}' without the 'what is' prefix, or ask about a specific aspect of {topic} you're interested in.",
                         "commands": [],
                         "codeblocks": [],
                         "placeholders": {}
                     }
                 elif question_type == 'how':
                     return {
-                        "text": f"I'd be happy to explain how to use or work with {topic}. This appears to be a topic I should have information about, but I'm experiencing an issue retrieving the complete details. Could you please rephrase your question or ask about specific aspects of {topic} you're interested in?",
+                        "text": f"I'd be happy to explain how to use or work with {topic}. To get a complete response, try asking just '{topic}' without the 'how' prefix, or ask about a specific aspect of {topic} you're interested in.",
                         "commands": [],
                         "codeblocks": [],
                         "placeholders": {}
                     }
                 else:
                     return {
-                        "text": f"I'd be happy to provide information about {topic}. This appears to be a topic I should have information about, but I'm experiencing an issue retrieving the complete details. Could you please rephrase your question or ask about specific aspects of {topic} you're interested in?",
+                        "text": f"I'd be happy to provide information about {topic}. To get a complete response, try asking just '{topic}' without the question prefix, or ask about a specific aspect of {topic} you're interested in.",
                         "commands": [],
                         "codeblocks": [],
                         "placeholders": {}
@@ -181,7 +200,7 @@ class ResponseCleaner:
                         topic = topic[3:].strip()
                     
                     # Generate a helpful fallback response
-                    cleaned_text = f"I'd be happy to provide information about {topic}. This appears to be a topic I should have information about, but I'm experiencing an issue retrieving the complete details. Could you please rephrase your question or ask about specific aspects of {topic} you're interested in?"
+                    cleaned_text = f"I'd be happy to provide information about {topic}. To get a complete response, try asking just '{topic}' without the question prefix, or ask about a specific aspect of {topic} you're interested in."
         
         # Apply final formatting
         result = {

@@ -10,6 +10,7 @@ import os
 import json
 from .engagement_manager import engagement_memory
 import random
+from typing import Dict, Any
 
 # Try to import rich for pretty output if available
 try:
@@ -1038,6 +1039,36 @@ Thought Process:
         """Generate learning resources based on tool information"""
         # This is a placeholder implementation. You might want to implement this method based on your specific requirements.
         return "Recommended Learning Path:\n1. Study password hashing and cryptography fundamentals\n2. Learn about password security best practices\n3. Practice on dedicated learning platforms\n4. Obtain relevant security certifications"
+
+    def process(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Process the analysis and generate reasoning"""
+        try:
+            # Check for invalid target error
+            if analysis.get("technical_context") == "invalid_target":
+                return {
+                    "reasoning": "Invalid target specification detected. The target must be a valid IP address, hostname, or domain.",
+                    "confidence": 1.0,
+                    "error": analysis.get("error", "Invalid target specification")
+                }
+
+            # Normal processing for valid targets
+            if analysis.get("technical_context") == "target_detected":
+                targets = analysis.get("targets", [])
+                if not targets:
+                    return {
+                        "reasoning": "No valid targets detected in the input.",
+                        "confidence": 1.0,
+                        "error": "No valid targets found"
+                    }
+
+            # Normal processing for valid analysis
+            return self.analyze_task(analysis["task"], analysis)
+        except Exception as e:
+            return {
+                "reasoning": "An error occurred while processing the analysis.",
+                "confidence": 0.0,
+                "error": str(e)
+            }
 
 # Initialize reasoning engine
 reasoning_engine = ReasoningEngine() 

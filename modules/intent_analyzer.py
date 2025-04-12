@@ -138,8 +138,26 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
         # Extract targets - this should happen regardless of intent
         detected_targets = extract_targets(user_input)
         if detected_targets:
-            analysis["targets"] = detected_targets
-            analysis["technical_context"] = "target_detected"
+            # Validate each target
+            valid_targets = []
+            for target in detected_targets:
+                # Check for valid IP/CIDR
+                if re.match(r'(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?', target):
+                    valid_targets.append(target)
+                # Check for valid hostname
+                elif re.match(r'(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}', target):
+                    valid_targets.append(target)
+                # Check for valid domain
+                elif re.match(r'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$', target):
+                    valid_targets.append(target)
+            
+            if valid_targets:
+                analysis["targets"] = valid_targets
+                analysis["technical_context"] = "target_detected"
+            else:
+                # If no valid targets found, set a specific error context
+                analysis["technical_context"] = "invalid_target"
+                analysis["error"] = "Invalid target specification. Please provide a valid IP address, hostname, or domain."
         
         # --- PRIORITY 1: Command Intent Detection ---
         command_triggers = ["run", "execute", "scan", "check", "show", "list", "find", "get", "what is", "tell me"]

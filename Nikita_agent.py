@@ -703,7 +703,14 @@ def main():
              gpu_manager.cleanup()
         return # Exit main function gracefully
 
-    chat_memory = load_chat_history(memory_limit=MEMORY_LIMIT, chat_history_file=CHAT_HISTORY_FILE)
+    # Start with a fresh chat memory by default to avoid mixing old conversations
+    chat_memory = []
+    
+    # Check if we should load previous chat history (disabled by default)
+    load_previous_history = os.environ.get('NIKITA_LOAD_HISTORY', '0').lower() in ('1', 'true', 'yes')
+    if load_previous_history:
+        chat_memory = load_chat_history(memory_limit=MEMORY_LIMIT, chat_history_file=CHAT_HISTORY_FILE)
+        console.print(f"💬 [cyan]Loaded {len(chat_memory)} previous chat messages[/cyan]")
 
     # Print version banner
     console.print("\n[bold red]╔══════════════════════════════════════╗[/bold red]")
@@ -807,6 +814,10 @@ def main():
             elif user_input_lower == "clear":
                 chat_memory.clear()
                 console.print("[green]Chat memory has been cleared! 🧹[/green]")
+                continue
+            elif user_input_lower in ["load history", "loadhistory"]:
+                chat_memory = load_chat_history(memory_limit=MEMORY_LIMIT, chat_history_file=CHAT_HISTORY_FILE)
+                console.print(f"💬 [cyan]Loaded {len(chat_memory)} previous chat messages[/cyan]")
                 continue
 
             # Add user input to chat memory

@@ -169,8 +169,10 @@ AVOID:
         total_tokens = self.estimate_tokens(base_prompt)  # Start with base prompt tokens
         
         # Debug: Print chat memory info
-        print(f"Chat memory length: {len(chat_memory)}")
-        print(f"Processing last {min(15, len(chat_memory))} messages")
+        actual_message_count = len(chat_memory)
+        messages_to_process = min(15, actual_message_count)
+        print(f"Chat memory length: {actual_message_count}")
+        print(f"Processing last {messages_to_process} messages")
         
         # Add messages while staying within token limit
         chat_tokens = 0

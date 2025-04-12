@@ -119,6 +119,10 @@ class ResponseCleaner:
                 question_type = topic_match.group(1).lower()
                 topic = topic_match.group(2).strip()
                 
+                # Handle cases like "Is X" where X is the actual topic
+                if topic.lower().startswith("is "):
+                    topic = topic[3:].strip()
+                
                 # Generate a helpful fallback response based on the question type and topic
                 if question_type == 'what':
                     return {
@@ -171,6 +175,10 @@ class ResponseCleaner:
                 if topic_match:
                     question_type = topic_match.group(1).lower()
                     topic = topic_match.group(2).strip()
+                    
+                    # Handle cases like "Is X" where X is the actual topic
+                    if topic.lower().startswith("is "):
+                        topic = topic[3:].strip()
                     
                     # Generate a helpful fallback response
                     cleaned_text = f"I'd be happy to provide information about {topic}. This appears to be a topic I should have information about, but I'm experiencing an issue retrieving the complete details. Could you please rephrase your question or ask about specific aspects of {topic} you're interested in?"

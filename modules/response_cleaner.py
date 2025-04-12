@@ -20,6 +20,7 @@ class ResponseCleaner:
         """Initialize the response cleaner"""
         self.json_pattern = re.compile(r'^\s*\{.*\}\s*$', re.DOTALL)
         self.command_pattern = re.compile(r'```(?:\w+)?\s*([^`]+)```|`([^`]+)`')
+        self.title_only_pattern = re.compile(r'^---\s*(What|How|Why|When|Where|Who)\s+.*\s*---$', re.IGNORECASE)
         
         # Role prefixes to clean from responses
         self.role_prefixes = [
@@ -109,6 +110,38 @@ class ResponseCleaner:
                     "placeholders": {}
                 }
                 
+        # Check for title-only responses (e.g., "--- What Is Burpsuite ---")
+        title_only_pattern = re.compile(r'^---\s*(What|How|Why|When|Where|Who)\s+.*\s*---$', re.IGNORECASE)
+        if title_only_pattern.match(response.strip()):
+            # Extract the topic from the title
+            topic_match = re.search(r'---\s*(What|How|Why|When|Where|Who)\s+(.*?)\s*---', response.strip(), re.IGNORECASE)
+            if topic_match:
+                question_type = topic_match.group(1).lower()
+                topic = topic_match.group(2).strip()
+                
+                # Generate a helpful fallback response based on the question type and topic
+                if question_type == 'what':
+                    return {
+                        "text": f"I'd be happy to explain about {topic}. This appears to be a topic I should have information about, but I'm experiencing an issue retrieving the complete details. Could you please rephrase your question or ask for specific aspects of {topic} you're interested in?",
+                        "commands": [],
+                        "codeblocks": [],
+                        "placeholders": {}
+                    }
+                elif question_type == 'how':
+                    return {
+                        "text": f"I'd be happy to explain how to use or work with {topic}. This appears to be a topic I should have information about, but I'm experiencing an issue retrieving the complete details. Could you please rephrase your question or ask about specific aspects of {topic} you're interested in?",
+                        "commands": [],
+                        "codeblocks": [],
+                        "placeholders": {}
+                    }
+                else:
+                    return {
+                        "text": f"I'd be happy to provide information about {topic}. This appears to be a topic I should have information about, but I'm experiencing an issue retrieving the complete details. Could you please rephrase your question or ask about specific aspects of {topic} you're interested in?",
+                        "commands": [],
+                        "codeblocks": [],
+                        "placeholders": {}
+                    }
+                
         # Check if the response contains command markers
         command_result = self._extract_commands(response)
         
@@ -129,6 +162,18 @@ class ResponseCleaner:
                 if action in text_lower:
                     cleaned_text = explanation
                     break
+                    
+            # Check for title-only responses that might have passed earlier checks
+            title_only_pattern = re.compile(r'^---\s*(What|How|Why|When|Where|Who)\s+.*\s*---$', re.IGNORECASE)
+            if title_only_pattern.match(cleaned_text.strip()):
+                # Extract the topic from the title
+                topic_match = re.search(r'---\s*(What|How|Why|When|Where|Who)\s+(.*?)\s*---', cleaned_text.strip(), re.IGNORECASE)
+                if topic_match:
+                    question_type = topic_match.group(1).lower()
+                    topic = topic_match.group(2).strip()
+                    
+                    # Generate a helpful fallback response
+                    cleaned_text = f"I'd be happy to provide information about {topic}. This appears to be a topic I should have information about, but I'm experiencing an issue retrieving the complete details. Could you please rephrase your question or ask about specific aspects of {topic} you're interested in?"
         
         # Apply final formatting
         result = {

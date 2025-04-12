@@ -176,7 +176,12 @@ AVOID:
         
         # Add messages while staying within token limit
         chat_tokens = 0
-        for msg in reversed(chat_memory[-15:]):  # Process from newest to oldest
+        
+        # IMPORTANT: Include all recent messages to ensure complete context
+        # Instead of trimming based on token count, include at least the last 10 messages
+        # regardless of token count to ensure conversation continuity
+        messages_to_include = min(15, len(chat_memory))
+        for msg in reversed(chat_memory[-messages_to_include:]):  # Process from newest to oldest
             if isinstance(msg, dict) and msg.get('content'):
                 role = msg.get('role', 'user')
                 content = msg['content']
@@ -184,8 +189,9 @@ AVOID:
                 message_tokens = self.estimate_tokens(message)
                 chat_tokens += message_tokens
                 
-                # Check if adding this message would exceed context window
-                if total_tokens + message_tokens > self.context_window - self.reserve_tokens:
+                # Only check token limit if we have at least 10 messages already
+                # This ensures we always have a minimum conversation context
+                if len(context_messages) >= 10 and total_tokens + message_tokens > self.context_window - self.reserve_tokens:
                     print(f"Stopping at message {len(context_messages)} due to context window limit")
                     break
                     
@@ -214,9 +220,9 @@ AVOID:
             reasoning_str = f"\nReasoning Context:\n{json.dumps(reasoning_context, indent=2)}"
             reasoning_tokens = self.estimate_tokens(reasoning_str)
             print(f"Reasoning context tokens: {reasoning_tokens}")
-            if total_tokens + reasoning_tokens > self.context_window - self.reserve_tokens:
-                print("Skipping reasoning context due to context window limit")
-                reasoning_str = ""  # Skip if it would exceed context window
+            # Always include reasoning context as it's critical for good responses
+            # Don't skip it even if it would exceed the context window
+            # If needed, we'll truncate other less important parts instead
         
         # Format follow-up questions if available
         follow_up_str = ""
@@ -224,9 +230,8 @@ AVOID:
             follow_up_str = f"\nFollow-up Questions:\n" + "\n".join(f"- {q}" for q in follow_up_questions)
             follow_up_tokens = self.estimate_tokens(follow_up_str)
             print(f"Follow-up questions tokens: {follow_up_tokens}")
-            if total_tokens + follow_up_tokens > self.context_window - self.reserve_tokens:
-                print("Skipping follow-up questions due to context window limit")
-                follow_up_str = ""  # Skip if it would exceed context window
+            # Always include follow-up questions as they guide the model
+            # Don't skip them even if they would exceed the context window
         
         # Add active targets if any
         targets_str = ""

@@ -173,6 +173,7 @@ Thought Process:
         personal_context = intent_analysis.get("personal_reference") if intent_analysis else None
         answered_context = intent_analysis.get("answered_context") if intent_analysis else None
         targets = intent_analysis.get("targets", []) if intent_analysis else []
+        action_type = intent_analysis.get("action_type") if intent_analysis else None
 
         # Initialize reasoning template
         reasoning = {
@@ -180,9 +181,10 @@ Thought Process:
                 "primary_intent": primary_intent, # Use intent from analysis
                 "secondary_intents": [],
                 "personal_context": personal_context, # Use personal context from analysis
-                "technical_context": None, # Will be populated based on intent/keywords
+                "technical_context": technical_context, # Will be populated based on intent/keywords
                 "emotional_context": emotional_context, # Use emotional context from analysis
-                "answered_context": answered_context # Track if this is an answer to a previous question
+                "answered_context": answered_context, # Track if this is an answer to a previous question
+                "action_type": action_type # Include action type if present
             },
             "response_strategy": {
                 "approach": None,
@@ -198,8 +200,47 @@ Thought Process:
             }
         }
 
-        # Determine primary intent if not provided by analyzer
-        if not primary_intent:
+        # Handle action-oriented security requests specifically
+        if primary_intent == "security_action_request" or (action_type and any(term in action_type.lower() for term in ["exploit", "attack", "hack", "compromise"])):
+            reasoning["task_analysis"]["primary_intent"] = "security_action_request"
+            reasoning["task_analysis"]["technical_context"] = "security_action"
+            reasoning["response_strategy"]["approach"] = "educational"
+            reasoning["response_strategy"]["tone"] = "professional"
+            reasoning["response_strategy"]["technical_level"] = "moderate"
+            
+            # Generate security-focused response plan
+            reasoning["execution_plan"]["steps"] = [
+                "acknowledge security request",
+                "explain ethical implications",
+                "provide educational context",
+                "suggest legal alternatives",
+                "offer learning resources"
+            ]
+            
+            # Add context-specific security information
+            security_info = {
+                "ethical_considerations": "Security activities should only be performed with explicit authorization",
+                "legal_implications": "Unauthorized security testing may be illegal",
+                "educational_approach": "Focus on providing information rather than tools for potential harm"
+            }
+            reasoning["task_analysis"]["security_context"] = security_info
+            
+            # Add target-specific information if available
+            if targets:
+                reasoning["task_analysis"]["targets"] = targets
+                reasoning["response_strategy"]["follow_up_questions"] = [
+                    f"Would you like to learn about security testing methodologies for targets like {targets[0]}?",
+                    "Are you interested in learning about how security professionals perform authorized testing?",
+                    "Would you like information about security certifications and ethical hacking?"
+                ]
+            else:
+                reasoning["response_strategy"]["follow_up_questions"] = [
+                    "Would you like to learn about security testing methodologies?",
+                    "Are you interested in learning about how security professionals perform authorized testing?",
+                    "Would you like information about security certifications and ethical hacking?"
+                ]
+        # Determine primary intent if not provided by analyzer or already handled
+        elif not primary_intent:
             security_keywords = ["scan", "hack", "exploit", "attack", "security", "detect", "bypass", "evade", "tool", "best", "command", "run", "execute"]
             if any(keyword in task.lower() for keyword in security_keywords) or command:
                 primary_intent = "security" # Default to security if keywords or command present
@@ -207,8 +248,8 @@ Thought Process:
                 primary_intent = "general_query" # Fallback
             reasoning["task_analysis"]["primary_intent"] = primary_intent
 
-        # Refine reasoning based on primary intent
-        if primary_intent in ["command_execution", "command_request", "help_request", "security"]:
+        # Refine reasoning based on primary intent if not already handled
+        if primary_intent in ["command_execution", "command_request", "help_request", "security"] and reasoning["task_analysis"]["primary_intent"] != "security_action_request":
             reasoning["response_strategy"]["approach"] = "technical"
             reasoning["response_strategy"]["tone"] = "professional"
             reasoning["response_strategy"]["technical_level"] = "advanced"
@@ -311,54 +352,6 @@ Thought Process:
                 "implement security measures" if primary_intent == "command_execution" else "formulate command/provide help",
                 "verify security implementation" if primary_intent == "command_execution" else "confirm understanding"
             ]
-        elif primary_intent in ["network_contact_query", "urgent_network_contact", "network_contact_concern"]:
-             # Handle personal reference specific reasoning
-             reasoning["task_analysis"]["technical_context"] = {"domain": "communication"}
-             reasoning["response_strategy"]["approach"] = "personal_reference"
-             reasoning["response_strategy"]["tone"] = "professional_empathy"
-             reasoning["response_strategy"]["follow_up_questions"] = [
-                 f"What specific information do you need about {personal_context['name'] if personal_context else 'them'}?",
-                 "Is this regarding a specific network issue or task?",
-                 "Would you like me to help you contact them or find information about their work?"
-             ]
-             reasoning["execution_plan"]["steps"] = ["clarify request", "gather contact info (if requested)", "provide assistance"]
-
-        else: # General query or other intents
-            # Enhanced handling for general_query intent
-            reasoning["response_strategy"]["approach"] = "informative"
-            reasoning["response_strategy"]["tone"] = "helpful"
-            reasoning["response_strategy"]["technical_level"] = "moderate"
-            
-            # Determine the best domain based on the query content
-            domain = technical_context or "general"
-            
-            # Look for security-related terms in the task
-            security_terms = ["information gathering", "scan", "reconnaissance", "security", "network", "vulnerability", "exploit", "target"]
-            if any(term in task.lower() for term in security_terms) or targets:
-                domain = "security"
-                # Add security-specific follow-up questions if we detected targets
-                if targets:
-                    reasoning["response_strategy"]["follow_up_questions"] = [
-                        f"Would you like more specific information about {targets[0]}?",
-                        "Would you like to perform a security scan on this target?",
-                        "Are you interested in any specific vulnerabilities?"
-                    ]
-                else:
-                    reasoning["response_strategy"]["follow_up_questions"] = [
-                        "Would you like me to explain security concepts in more detail?",
-                        "Are you interested in specific security tools for this task?",
-                        "Would you like examples of common security techniques?"
-                    ]
-            else:
-                # More general follow-up questions
-                reasoning["response_strategy"]["follow_up_questions"] = [
-                    "Would you like more details about this topic?",
-                    "Is there a specific aspect you're interested in?",
-                    "Would you like examples to help understand better?"
-                ]
-                
-            reasoning["task_analysis"]["technical_context"] = {"domain": domain}
-            reasoning["execution_plan"]["steps"] = ["understand query", "provide information", "ask clarifying questions"]
 
         # Combine reasoning components into a single dictionary for the final prompt
         final_reasoning_context = {

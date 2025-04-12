@@ -87,6 +87,37 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
         
         input_lower = user_input.lower()
         
+        # Check for action-oriented queries like "perform X on Y"
+        action_patterns = [
+            r'^(?:perform|run|do|execute|conduct)\s+(?:an?\s+)?(\w+(?:\s+\w+){0,2})',  # perform X
+            r'^(?:start|begin|initiate)\s+(?:an?\s+)?(\w+(?:\s+\w+){0,2})',  # start X
+            r'^(?:try|attempt)\s+(?:an?\s+)?(\w+(?:\s+\w+){0,2})'  # try X
+        ]
+        
+        is_action_query = False
+        action_type = None
+        
+        for pattern in action_patterns:
+            match = re.search(pattern, input_lower)
+            if match:
+                is_action_query = True
+                action_type = match.group(1).strip()
+                break
+        
+        # Process action-oriented queries
+        if is_action_query:
+            analysis["intent"] = "action_request"
+            analysis["action_type"] = action_type
+            
+            # Check for security-related actions that need special handling
+            security_actions = ["exploit", "attack", "hack", "pentest", "scan", "reconnaissance", 
+                               "enumeration", "footprinting", "information gathering", "vuln", 
+                               "vulnerability", "brute force", "bruteforce"]
+            
+            if any(security_action in action_type for security_action in security_actions):
+                analysis["intent"] = "security_action_request"
+                analysis["technical_context"] = "security_action"
+        
         # First, check if this is an explicit command request
         explicit_command_patterns = [
             r'^(?:run|execute|launch|start)\s+([a-zA-Z0-9_-]+)',  # Starting with run/execute

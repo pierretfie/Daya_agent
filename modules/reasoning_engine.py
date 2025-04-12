@@ -252,106 +252,67 @@ Thought Process:
         if primary_intent in ["command_execution", "command_request", "help_request", "security"] and reasoning["task_analysis"]["primary_intent"] != "security_action_request":
             reasoning["response_strategy"]["approach"] = "technical"
             reasoning["response_strategy"]["tone"] = "professional"
-            reasoning["response_strategy"]["technical_level"] = "advanced"
-
-            # Add security-specific context
-            reasoning["task_analysis"]["technical_context"] = {
-                "domain": technical_context or "security", # Use provided or default
-                "complexity": "advanced",
-                "risk_level": "high"
-            }
-
-            # Add tool-specific context if asking about tools or a command is present
-            if "tool" in task.lower() or "best" in task.lower() or command:
-                focus = "tool_recommendation" if "best" in task.lower() else "tool_usage"
-                reasoning["task_analysis"]["technical_context"]["focus"] = focus
-
-                # Add follow-up based on whether it's help or execution and if there's an answered context
-                if answered_context:
-                    # If this is an answer to a previous question, generate appropriate follow-up
-                    if answered_context.get("answered_question", "").lower().startswith(("what", "how", "which", "when", "where", "why")):
-                        # For "what" questions about tools/commands
-                        if "what" in answered_context["answered_question"].lower():
-                            reasoning["response_strategy"]["follow_up_questions"] = [
-                                "Would you like to see an example of how to use this?",
-                                "Would you like me to explain more about its features?",
-                                "Would you like to know about alternative tools?"
-                            ]
-                        # For "how" questions about tools/commands
-                        elif "how" in answered_context["answered_question"].lower():
-                            reasoning["response_strategy"]["follow_up_questions"] = [
-                                "Would you like me to show you the command syntax?",
-                                "Would you like to see some common use cases?",
-                                "Would you like to know about best practices?"
-                            ]
-                        # For "which" questions about tools/commands
-                        elif "which" in answered_context["answered_question"].lower():
-                            reasoning["response_strategy"]["follow_up_questions"] = [
-                                "Would you like to know more about why this is the best choice?",
-                                "Would you like to see a comparison with other options?",
-                                "Would you like to know about its specific advantages?"
-                            ]
-                        else:
-                            # Default follow-up questions for other types of questions
-                            reasoning["response_strategy"]["follow_up_questions"] = [
-                                "Would you like me to explain more about this?",
-                                "Would you like to see some practical examples?",
-                                "Would you like to know about related concepts?"
-                            ]
-                    else:
-                        # For non-question answers, generate context-appropriate follow-up
-                        reasoning["response_strategy"]["follow_up_questions"] = [
-                            "Would you like to proceed with this option?",
-                            "Would you like to know more about what this means?",
-                            "Would you like to explore other options?"
-                        ]
-                else:
-                    # Original follow-up questions for new queries
-                    if primary_intent == "help_request":
-                        reasoning["response_strategy"]["follow_up_questions"] = [
-                            f"What specifically about '{command.split()[-1] if command else 'this command'}' would you like help with?",
-                            "Are you looking for usage examples or explanations of options?"
-                        ]
-                    elif primary_intent in ["command_request", "command_execution"]:
-                        reasoning["response_strategy"]["follow_up_questions"] = [
-                            "What is the target or scope for this command?",
-                            "Are there any specific parameters you want to use?"
-                        ]
-                    else: # General tool query
-                        reasoning["response_strategy"]["follow_up_questions"] = [
-                            "What specific security requirements do you have?",
-                            "Are you looking for a specific type of security tool?",
-                            "Do you need a tool for a particular security task?"
-                        ]
-
-                # Add tool recommendations if appropriate (example)
-                if "scan" in task.lower() and "detect" in task.lower():
-                    reasoning["execution_plan"]["recommended_tools"] = [
-                        {
-                            "name": "Nmap",
-                            "description": "Advanced network scanning tool with stealth capabilities",
-                            "features": ["SYN scan", "Version detection", "OS fingerprinting", "Stealth mode"],
-                            "command": "nmap -sS -T2 -p- --max-retries 1 --randomize-hosts --scan-delay 5s {TARGET}"
-                        },
-                        {
-                            "name": "Masscan",
-                            "description": "Fast port scanner with minimal detection footprint",
-                            "features": ["Asynchronous scanning", "Low detection rate", "High performance"],
-                            "command": "masscan {TARGET} -p1-65535 --rate=1000"
-                        }
-                    ]
-                elif "vulnerability" in task.lower():
-                     # (Vulnerability tool recommendations remain the same)
-                     pass # Placeholder
-
-            # Add security-specific steps
+            reasoning["response_strategy"]["technical_level"] = "moderate"
+            reasoning["task_analysis"]["technical_context"] = {"domain": "security_tools"}
+            reasoning["response_strategy"]["follow_up_questions"] = [
+                "Would you like more details about this command or tool?",
+                "Do you need help with specific options or parameters?",
+                "Would you like to see examples of common use cases?"
+            ]
             reasoning["execution_plan"]["steps"] = [
-                "analyze security requirements",
-                "identify potential risks",
-                "develop security strategy",
-                "implement security measures" if primary_intent == "command_execution" else "formulate command/provide help",
+                "understand request",
+                "validate command",
+                "prepare command context",
                 "verify security implementation" if primary_intent == "command_execution" else "confirm understanding"
             ]
+        elif primary_intent in ["network_contact_query", "urgent_network_contact", "network_contact_concern"]:
+            # Handle personal reference specific reasoning
+            reasoning["task_analysis"]["technical_context"] = {"domain": "communication"}
+            reasoning["response_strategy"]["approach"] = "personal_reference"
+            reasoning["response_strategy"]["tone"] = "professional_empathy"
+            reasoning["response_strategy"]["follow_up_questions"] = [
+                f"What specific information do you need about {personal_context['name'] if personal_context else 'them'}?",
+                "Is this regarding a specific network issue or task?",
+                "Would you like me to help you contact them or find information about their work?"
+            ]
+            reasoning["execution_plan"]["steps"] = ["clarify request", "gather contact info (if requested)", "provide assistance"]
+
+        else: # General query or other intents
+            # Enhanced handling for general_query intent
+            reasoning["response_strategy"]["approach"] = "informative"
+            reasoning["response_strategy"]["tone"] = "helpful"
+            reasoning["response_strategy"]["technical_level"] = "moderate"
+            
+            # Determine the best domain based on the query content
+            domain = technical_context or "general"
+            
+            # Look for security-related terms in the task
+            security_terms = ["information gathering", "scan", "reconnaissance", "security", "network", "vulnerability", "exploit", "target"]
+            if any(term in task.lower() for term in security_terms) or targets:
+                domain = "security"
+                # Add security-specific follow-up questions if we detected targets
+                if targets:
+                    reasoning["response_strategy"]["follow_up_questions"] = [
+                        f"Would you like more specific information about {targets[0]}?",
+                        "Would you like to perform a security scan on this target?",
+                        "Are you interested in any specific vulnerabilities?"
+                    ]
+                else:
+                    reasoning["response_strategy"]["follow_up_questions"] = [
+                        "Would you like me to explain security concepts in more detail?",
+                        "Are you interested in specific security tools for this task?",
+                        "Would you like examples of common security techniques?"
+                    ]
+            else:
+                # More general follow-up questions
+                reasoning["response_strategy"]["follow_up_questions"] = [
+                    "Would you like more details about this topic?",
+                    "Is there a specific aspect you're interested in?",
+                    "Would you like examples to help understand better?"
+                ]
+                
+            reasoning["task_analysis"]["technical_context"] = {"domain": domain}
+            reasoning["execution_plan"]["steps"] = ["understand query", "provide information", "ask clarifying questions"]
 
         # Combine reasoning components into a single dictionary for the final prompt
         final_reasoning_context = {
@@ -1075,6 +1036,23 @@ Thought Process:
                     "error": analysis.get("error", "Invalid target specification")
                 }
 
+            # Special handling for security action requests
+            if analysis.get("intent") == "security_action_request" or analysis.get("technical_context") == "security_action":
+                targets = analysis.get("targets", [])
+                action_type = analysis.get("action_type", "security action")
+                
+                # Create educational response for security actions
+                return {
+                    "reasoning": f"The user is requesting a potentially sensitive security action ({action_type}) " + 
+                                 f"{'on specific targets: ' + ', '.join(targets) if targets else 'without specifying valid targets'}. " +
+                                 "I should provide educational information about security concepts while explaining ethical considerations.",
+                    "confidence": 1.0,
+                    "response_type": "educational",
+                    "ethical_note": "Always emphasize authorized testing and legal compliance",
+                    "targets": targets,
+                    "action": action_type
+                }
+
             # Normal processing for valid targets
             if analysis.get("technical_context") == "target_detected":
                 targets = analysis.get("targets", [])
@@ -1084,9 +1062,19 @@ Thought Process:
                         "confidence": 1.0,
                         "error": "No valid targets found"
                     }
-
-            # Normal processing for valid analysis
-            return self.analyze_task(analysis["task"], analysis)
+            
+            # Regular processing for other types of queries
+            result = self.analyze_task(analysis.get("task", ""), intent_analysis=analysis)
+            
+            # Ensure we always have some reasoning content
+            if not result or not result.get("reasoning"):
+                return {
+                    "reasoning": "Unable to process the request properly. Attempting to provide a general response.",
+                    "confidence": 0.5,
+                    "fallback": True
+                }
+                
+            return result
         except Exception as e:
             return {
                 "reasoning": "An error occurred while processing the analysis.",

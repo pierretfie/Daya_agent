@@ -65,34 +65,49 @@ class ResponseCleaner:
             re.compile(r'^\s*(Understanding|Analysis|Approach|Response):.*$', re.MULTILINE)
         ]
         
-    def clean_response(self, raw_response: str) -> Dict[str, Any]:
-        """
-        Clean and format a raw LLM response.
-        
-        Args:
-            raw_response (str): Raw response from the LLM
-            
-        Returns:
-            dict: Dictionary containing cleaned response and extracted metadata
-                - 'clean_text': The cleaned response text
-                - 'commands': List of extracted commands
-                - 'metadata': Any extracted metadata
-        """
-        if not raw_response:
+    def clean_response(self, response):
+        """Clean up the response text and extract components"""
+        if not response or response.strip() == "":
             return {
-                'clean_text': "I apologize, but I couldn't generate a response. Please try again.",
-                'commands': [],
-                'metadata': {}
+                "text": "I'm sorry, but I couldn't generate a proper response. Please try rephrasing your question.",
+                "commands": [],
+                "codeblocks": [],
+                "placeholders": {}
             }
             
-        # Try to parse as JSON first
-        json_data = self._extract_json(raw_response)
+        # Check for extremely short responses (likely issues with response generation)
+        if len(response.strip()) < 20:
+            # Handle very short responses that aren't meaningful
+            if response.strip() in ["---", "--- Perform ---", "--- Perform Exploit ---", "--- Information Gathering ---"]:
+                return {
+                    "text": "I understand you're asking about security-related actions. I'd be happy to explain security concepts, methodologies, and ethical considerations. Could you provide more details about what specific information you're looking for?",
+                    "commands": [],
+                    "codeblocks": [],
+                    "placeholders": {}
+                }
+                
+        # Check if the response contains command markers
+        command_result = self._extract_commands(response)
         
-        if json_data:
-            return self._process_json_response(json_data)
-        else:
-            return self._process_text_response(raw_response)
-            
+        # Extract code blocks
+        code_result = self._extract_code_blocks(command_result["text"])
+        
+        # Normalize the response format
+        normalized = self._normalize_text(code_result["text"])
+        
+        # Replace placeholders with their values
+        cleaned_text = self._replace_placeholders(normalized["text"], normalized["placeholders"])
+        
+        # Apply final formatting
+        result = {
+            "text": cleaned_text,
+            "commands": command_result["commands"],
+            "codeblocks": code_result["codeblocks"],
+            "placeholders": normalized["placeholders"]
+        }
+        
+        return result
+        
     def _extract_json(self, text: str) -> Optional[Dict[str, Any]]:
         """Extract and parse JSON from text if present"""
         if self.json_pattern.match(text):
@@ -293,27 +308,17 @@ class ResponseCleaner:
         
         return text
         
-    def format_for_display(self, cleaned_response: Dict[str, Any]) -> str:
-        """
-        Format the cleaned response for display to the user.
-        
-        Args:
-            cleaned_response (dict): The cleaned response dictionary
+    def format_for_display(self, cleaned_result: Dict[str, Any]) -> str:
+        """Format the cleaned result for display to the user"""
+        if not cleaned_result:
+            return "I apologize, but I couldn't generate a proper response. Please try rephrasing your question."
             
-        Returns:
-            str: Formatted text ready for display
-        """
-        clean_text = cleaned_response['clean_text']
-        
-        # Final cleanup to ensure no role prefixes or reasoning patterns remain
-        clean_text = self._remove_role_prefixes(clean_text)
-        clean_text = self._remove_reasoning_patterns(clean_text)
-        
-        # Trim leading/trailing whitespace and make sure there aren't excessive blank lines
-        clean_text = re.sub(r'\n{3,}', '\n\n', clean_text)
-        clean_text = clean_text.strip()
-        
-        return clean_text
+        if "text" in cleaned_result:
+            return cleaned_result["text"]
+        elif "clean_text" in cleaned_result:
+            return cleaned_result["clean_text"]
+        else:
+            return "I apologize, but I couldn't generate a proper response. Please try rephrasing your question."
 
 
 if __name__ == "__main__":

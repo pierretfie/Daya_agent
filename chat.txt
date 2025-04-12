@@ -1,70 +1,21 @@
 
 ┌──(SUDO)
-└─> perform information gathering on google.com
-Chat memory length: 5
-Processing last 5 messages
-Chat memory tokens used: 76
-Reasoning context tokens: 277
-Final prompt tokens: 5034
+└─> perform an exploit on google.com
+Chat memory length: 10
+Processing last 10 messages
+Chat memory tokens used: 651
+Reasoning context tokens: 499
+Follow-up questions tokens: 66
+Final prompt tokens: 5908
 Context window: 15000
 Max response tokens: 15000
 Reserved tokens: 512
 ===================
 
-⠹ 🐺 Reasoning... [1.7s]
-⏱️ 1.8s
-
-┌──(NIKITA 🐺)
-└─> --- Perform Information Gathering ---
-
-
-┌──(SUDO)
-└─> how to perform information gathering on google.com
-Chat memory length: 7
-Processing last 7 messages
-Chat memory tokens used: 115
-Reasoning context tokens: 277
-Final prompt tokens: 5079
-Context window: 15000
-Max response tokens: 15000
-Reserved tokens: 512
-===================
-
-⠹ 🐺 Reasoning... [29.7s]
-⏱️ 29.8s
-
-┌──(NIKITA 🐺)
-└─> --- Perform Information Gathering ---
-
-Performing information gathering typically involves collecting data about a 
-target or domain of interest. In this case, you've asked for information on how 
-to gather information about Google.com.
-
-Information gathering can be performed using various tools and techniques, but 
-it's essential to understand that not all methods are legal or ethical. Always 
-ensure you have explicit authorization before performing any actions.
-
-Here's a brief overview of some common information gathering techniques:
-
-1. Passive Information Gathering: This type of gathering involves collecting 
-data without directly interacting with the target. Some examples include:
-* DNS queries (e.g., nslookup)
-* Web crawling (e.g., using tools like Burp Suite or Wireshark)
-* Social media monitoring (e.g., using tools like Hootsuite or Brandwatch)
-2. Active Information Gathering: This type of gathering involves directly 
-interacting with the target to collect data. Some examples include:
-* Port scanning (using tools like Nmap)
-* Vulnerability scanning (using tools like Nikto)
-* Manual penetration testing (with permission)
-
-It's important to remember that information gathering should be performed with 
-the least intrusive methods possible and only when explicitly authorized. Always
-ensure you understand the legal implications of your actions and maintain a high
-level of ethics.
-
-If you have any further questions or would like more guidance on performing 
-information gathering, please let me know.
-
-
-┌──(SUDO)
-└─> 
+⠴ 🐺 Reasoning... [2.0s]Error generating response: 'ResponseCleaner' object has no attribute 
+'_extract_code_blocks'
+Please try rephrasing your question.
+⠴ 🐺 Reasoning... [2.0s]
+Unexpected error: cannot access local variable 'cleaned_result' where it is not 
+associated with a value
+Continuing to next prompt...

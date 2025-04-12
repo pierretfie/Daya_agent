@@ -46,6 +46,16 @@ class ResponseCleaner:
             "domain", "intent", "answered_context", "follow_up_questions"
         ]
         
+        # Security-related action patterns
+        self.security_action_patterns = {
+            "exploit": "I understand you're interested in exploitation. Let me explain the security implications and ethical considerations. What specific aspect would you like to learn about?",
+            "hack": "I can help explain security concepts and defensive measures. What specific security topic would you like to understand better?",
+            "attack": "I can help you understand security concepts and defense strategies. What specific aspect of security would you like to learn about?",
+            "scan": "I can explain network scanning concepts, tools, and best practices. Would you like to learn about security assessment methodologies?",
+            "gather": "I can explain information gathering techniques and their security implications. What specific aspect interests you?",
+            "reconnaissance": "I can help you understand reconnaissance and its role in security assessment. What would you like to know?"
+        }
+        
         # New patterns for removing reasoning steps and analysis indicators
         self.reasoning_patterns = [
             # Pattern for numbered steps with labels (e.g., "1. UNDERSTAND: ...")
@@ -69,7 +79,7 @@ class ResponseCleaner:
         """Clean up the response text and extract components"""
         if not response or response.strip() == "":
             return {
-                "text": "I'm sorry, but I couldn't generate a proper response. Please try rephrasing your question.",
+                "text": "I apologize, but I couldn't generate a proper response. Please try rephrasing your question.",
                 "commands": [],
                 "codeblocks": [],
                 "placeholders": {}
@@ -77,10 +87,23 @@ class ResponseCleaner:
             
         # Check for extremely short responses (likely issues with response generation)
         if len(response.strip()) < 20:
-            # Handle very short responses that aren't meaningful
-            if response.strip() in ["---", "--- Perform ---", "--- Perform Exploit ---", "--- Information Gathering ---"]:
+            # Handle security-related short responses
+            response_lower = response.strip().lower()
+            
+            # Check for security action patterns
+            for action, explanation in self.security_action_patterns.items():
+                if action in response_lower or f"--- {action}" in response_lower:
+                    return {
+                        "text": explanation,
+                        "commands": [],
+                        "codeblocks": [],
+                        "placeholders": {}
+                    }
+            
+            # Handle generic short responses
+            if response.strip() in ["---", "--- Perform ---", "--- Exploiting ---", "--- Information Gathering ---"]:
                 return {
-                    "text": "I understand you're asking about security-related actions. I'd be happy to explain security concepts, methodologies, and ethical considerations. Could you provide more details about what specific information you're looking for?",
+                    "text": "I understand you're asking about security-related actions. I can help explain security concepts, methodologies, and best practices. Could you provide more details about what specific information you're looking for?",
                     "commands": [],
                     "codeblocks": [],
                     "placeholders": {}
@@ -97,6 +120,15 @@ class ResponseCleaner:
         
         # Replace placeholders with their values
         cleaned_text = self._replace_placeholders(normalized["text"], normalized["placeholders"])
+        
+        # Check if the cleaned text is too short or generic
+        if len(cleaned_text.strip()) < 50:  # Increased minimum length threshold
+            # Look for security-related content
+            text_lower = cleaned_text.lower()
+            for action, explanation in self.security_action_patterns.items():
+                if action in text_lower:
+                    cleaned_text = explanation
+                    break
         
         # Apply final formatting
         result = {

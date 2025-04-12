@@ -82,10 +82,48 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
             "command": None,
             "should_execute": False,
             "targets": [],
-            "follow_up_suggestions": []
+            "follow_up_suggestions": [],
+            "security_context": None  # New field for security context
         }
         
         input_lower = user_input.lower()
+        
+        # Check for security-related queries first
+        security_keywords = {
+            "exploit": {
+                "context": "exploitation",
+                "description": "Understanding security vulnerabilities and their implications",
+                "ethical_note": "Focus on defensive security and understanding vulnerabilities for protection"
+            },
+            "hack": {
+                "context": "security_testing",
+                "description": "Security testing and assessment methodologies",
+                "ethical_note": "Emphasize ethical security practices and responsible disclosure"
+            },
+            "attack": {
+                "context": "attack_vectors",
+                "description": "Understanding attack vectors and defense strategies",
+                "ethical_note": "Focus on defensive measures and protection strategies"
+            },
+            "scan": {
+                "context": "security_scanning",
+                "description": "Network and security scanning methodologies",
+                "ethical_note": "Emphasize authorized scanning and security assessment"
+            },
+            "reconnaissance": {
+                "context": "information_gathering",
+                "description": "Understanding information gathering techniques",
+                "ethical_note": "Focus on defensive security and protecting against reconnaissance"
+            }
+        }
+        
+        # Check for security-related keywords
+        for keyword, context in security_keywords.items():
+            if keyword in input_lower:
+                analysis["intent"] = "security_query"
+                analysis["security_context"] = context
+                analysis["technical_context"] = "security_related"
+                break
         
         # Check for action-oriented queries like "perform X on Y"
         action_patterns = [
@@ -117,6 +155,8 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
             if any(security_action in action_type for security_action in security_actions):
                 analysis["intent"] = "security_action_request"
                 analysis["technical_context"] = "security_action"
+                # Add ethical context for security actions
+                analysis["ethical_context"] = "This request involves security-related actions. I will provide information about security concepts and defensive measures while adhering to ethical guidelines."
         
         # First, check if this is an explicit command request
         explicit_command_patterns = [
@@ -154,20 +194,15 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
         # Set intent based on pattern matching
         if explicit_request:
             analysis["intent"] = "command_request"
+            if request_tool in self.system_commands:
+                analysis["command"] = request_tool
+                analysis["should_execute"] = True
         elif is_info_request:
             analysis["intent"] = "information_request"
-        else:
-            # If no explicit patterns match, check for implicit command or info intent
-            command_triggers = ["run", "execute", "scan", "check", "show", "list", "find", "get"]
-            info_triggers = ["what", "how", "who", "when", "where", "why", "explain", "tell", "describe"]
-            
-            # Check for command-like words
-            if any(trigger in input_lower.split() for trigger in command_triggers):
-                analysis["intent"] = "command_request"
-            # Check for info-seeking words
-            elif any(trigger in input_lower.split() for trigger in info_triggers):
-                analysis["intent"] = "information_request"
-            # Otherwise keep the default "general_query" intent set earlier
+            # Check if this is a security-related information request
+            if any(keyword in input_lower for keyword in security_keywords.keys()):
+                analysis["technical_context"] = "security_information"
+                analysis["intent"] = "security_information_request"
         
         # Extract targets - this should happen regardless of intent
         detected_targets = extract_targets(user_input)
@@ -188,6 +223,8 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
             if valid_targets:
                 analysis["targets"] = valid_targets
                 analysis["technical_context"] = "target_detected"
+                # Add ethical context for targeting
+                analysis["ethical_context"] = "Target specified. Will provide information about security concepts while adhering to ethical guidelines."
             else:
                 # If no valid targets found, set a specific error context
                 analysis["technical_context"] = "invalid_target"

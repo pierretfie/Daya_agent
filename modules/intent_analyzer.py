@@ -162,7 +162,7 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
                 # If targets are detected with security-related intent, require confirmation
                 if analysis["intent"] in ["security_alert", "security_scan"]:
                     analysis["requires_confirmation"] = True
-        
+
         return analysis
 
     @lru_cache(maxsize=128)

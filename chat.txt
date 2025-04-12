@@ -1,43 +1,87 @@
-──(NIKITA 🐺)
-└─> Nikita 🐺: Exploiting port 22 on a target requires understanding how SSH 
-works and what vulnerabilities might exist on the system. SSH is a protocol for 
-secure remote login to Unix-based systems. It uses public key cryptography to 
-authenticate users and encrypt data in transit.
-
-When exploiting port 22, it's important to ensure that you have permission to 
-connect to the target and that you are using the correct credentials. If you do 
-not have permission, attempting to connect could result in a denial of service 
-or other security incidents. Additionally, if the SSH server is not properly 
-configured, it may be vulnerable to attacks such as brute force login attempts 
-or buffer overflows.
-
-Before attempting any exploits, it's recommended to perform a vulnerability scan
-of the target system to identify any potential weaknesses. This can help you 
-prioritize your efforts and focus on the most critical issues first.
-
-If you do decide to proceed with an exploit, there are several tools available 
-that can help you automate the process. Some popular options include Metasploit,
-Nmap, and Burp Suite. These tools typically require some technical knowledge and
-may require additional configuration depending on your specific use case.
-
-It's important to note that exploiting vulnerabilities in a system without 
-permission is illegal and unethical. It's always best to obtain permission 
-before attempting any security tests or exploits, and to follow ethical 
-guidelines such as the OWASP Cheat Sheet for responsible disclosure of 
-vulnerabilities.
-
 
 ┌──(SUDO)
-└─> proceed with exploit
-Chat memory length: 3
-Processing last 3 messages
-Chat memory tokens used: 504
-Reasoning context tokens: 360
-Follow-up questions tokens: 69
-Final prompt tokens: 5609
+└─> clear
+Chat memory has been cleared! 🧹
+
+┌──(SUDO)
+└─> elaborate how nmap is used
+Chat memory length: 1
+Processing last 1 messages
+Chat memory tokens used: 11
+Reasoning context tokens: 371
+Follow-up questions tokens: 65
+Final prompt tokens: 5117
 Context window: 15000
 Max response tokens: 15000
 Reserved tokens: 512
 ===================
 
-^C
+⠸ 🐺 Reasoning... [24.2s]
+⏱️ 24.3s
+
+┌──(NIKITA 🐺)
+└─> Nmap (Network Mapper) is an open-source network exploration and security 
+auditing tool that can be used to discover hosts on a target network, identify 
+their operating systems and services, and perform various vulnerability scans. 
+Nmap uses a combination of TCP and UDP probes to determine which ports are open 
+and which services are running on them. It also supports a wide range of 
+protocols, including HTTP, SSH, FTP, SMTP, and many others.
+
+Nmap has several key features that make it useful for security professionals and
+network administrators:
+
+1. Port Scanning: Nmap can scan a target network to determine which ports are 
+open and which services are running on them. This information can be used to 
+identify potential vulnerabilities and misconfigurations in the network.
+2. Service Discovery: Nmap can also discover the operating system and version of
+the target host, as well as any installed services and their versions. This 
+information can be used to identify potential security weaknesses and 
+misconfigurations.
+3. Vulnerability Scanning: Nmap supports a wide range of vulnerability scans, 
+including OS detection, port scan, version detection, and more. These scans can 
+help identify potential security weaknesses in the target network.
+4. Scripting: Nmap has a powerful scripting engine that allows users to write 
+custom scripts to automate common tasks, such as port scanning and vulnerability
+scanning. This can save time and reduce the risk of human error.
+5. Reporting: Nmap supports a variety of reporting formats, including HTML, XML,
+and PDF. These reports can be used to document the findings of the scan and 
+share them with others.
+
+To use Nmap, you first need to install it on your local system. Once installed, 
+you can run various commands to perform different tasks. Some common Nmap 
+commands include:
+• nmap - scan a target network for open ports and services
+• nmap --script <script> - scan a target network using a specific script (e.g., 
+http-title)
+• nmap --os-detect - detect the operating system of a target host
+• nmap --version-all - discover all installed services and their versions on a 
+target host
+• nmap --script vuln-all - perform a comprehensive vulnerability scan of a 
+target network
+
+It's important to note that Nmap can be a powerful tool, but it should be used 
+with caution. Scanning a target network without permission can be illegal and 
+potentially damaging to the network. It's always best to obtain permission 
+before performing any security assessments or vulnerability scans.
+
+
+┌──(SUDO)
+└─> exploit port 22 on target 192.168.0.1
+Chat memory length: 3
+Processing last 3 messages
+Chat memory tokens used: 845
+Reasoning context tokens: 365
+Follow-up questions tokens: 73
+Final prompt tokens: 5969
+Context window: 15000
+Max response tokens: 15000
+Reserved tokens: 512
+===================
+agents are all about tools
+create an exploit tool that the agent can use to
+1.produce attack flow plan
+2.decide on tools
+3.execute commands as requested
+a tool that can be effective when prompted
+"exploit 192.168.0.1"
+"exploit port X on target Y"

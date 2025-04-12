@@ -78,12 +78,13 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
     def analyze(self, user_input, chat_memory: Optional[ChatMemory] = None):
         """Analyze user input for intent and context"""
         analysis = {
-            "intent": "general_query",  # Default to general query instead of unknown
+            "intent": "general_query",
             "command": None,
             "should_execute": False,
             "targets": [],
             "follow_up_suggestions": [],
-            "security_context": None
+            "security_context": None,
+            "requires_confirmation": False
         }
         
         input_lower = user_input.lower()
@@ -91,8 +92,12 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
         # Enhanced pattern matching that doesn't rely on starting words
         patterns = {
             # Security-related patterns
-            r'(?:exploit|hack|attack|scan|reconnaissance)\s+(?:port|service|system|target|network)': "security_query",
-            r'(?:perform|run|do|execute|conduct)\s+(?:an?\s+)?(?:security|scan|test|check)': "security_action_request",
+            r'(?:exploit|hack|attack|penetrate)\s+(?:port|service|system|target|network)': "security_alert",
+            r'(?:perform|run|do|execute|conduct)\s+(?:an?\s+)?(?:exploit|hack|attack|penetration)': "security_alert",
+            
+            # Security scan patterns
+            r'(?:scan|check|analyze|examine)\s+(?:port|ports|service|services)\s+(?:on|for|at)\s+([a-zA-Z0-9\./-]+)': "security_scan",
+            r'(?:scan|check|analyze)\s+([a-zA-Z0-9\./-]+)\s+(?:for|on)\s+(?:port|ports|service|services)': "security_scan",
             
             # Command patterns
             r'(?:run|execute|launch|start)\s+([a-zA-Z0-9_-]+)': "command_request",
@@ -126,10 +131,12 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
         if analysis["intent"] == "general_query":
             # Check for security-related keywords anywhere in the text
             security_keywords = ["exploit", "hack", "attack", "scan", "reconnaissance", 
-                               "vulnerability", "security", "pentest", "brute force"]
+                               "vulnerability", "security", "pentest", "brute force",
+                               "penetrate", "penetration"]
             if any(keyword in input_lower for keyword in security_keywords):
-                analysis["intent"] = "security_query"
+                analysis["intent"] = "security_alert"
                 analysis["technical_context"] = "security_related"
+                analysis["requires_confirmation"] = True
             
             # Check for command-related keywords
             command_keywords = ["run", "execute", "launch", "start", "use", "try"]
@@ -151,6 +158,10 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
             if valid_targets:
                 analysis["targets"] = valid_targets
                 analysis["technical_context"] = "target_detected"
+                
+                # If targets are detected with security-related intent, require confirmation
+                if analysis["intent"] in ["security_alert", "security_scan"]:
+                    analysis["requires_confirmation"] = True
         
         return analysis
 

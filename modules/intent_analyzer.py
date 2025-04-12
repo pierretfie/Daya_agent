@@ -83,59 +83,12 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
             "should_execute": False,
             "targets": [],
             "follow_up_suggestions": [],
-            "security_context": None,
-            "action_context": None  # New field for action context
+            "security_context": None  # New field for security context
         }
         
-        input_lower = user_input.lower().strip()
+        input_lower = user_input.lower()
         
-        # Enhanced basic action word detection
-        basic_action_words = {
-            "proceed": "continue",
-            "go": "continue",
-            "start": "begin",
-            "begin": "begin",
-            "continue": "continue",
-            "stop": "stop",
-            "end": "stop",
-            "pause": "pause",
-            "resume": "continue",
-            "next": "continue",
-            "back": "back",
-            "return": "back",
-            "help": "help",
-            "show": "show",
-            "tell": "tell",
-            "explain": "explain",
-            "list": "list",
-            "find": "find",
-            "check": "check",
-            "verify": "verify",
-            "confirm": "confirm",
-            "cancel": "stop",
-            "abort": "stop",
-            "exit": "stop",
-            "quit": "stop"
-        }
-        
-        # Check for basic action words first
-        words = input_lower.split()
-        if words and words[0] in basic_action_words:
-            action_type = basic_action_words[words[0]]
-            analysis["action_context"] = {
-                "type": action_type,
-                "word": words[0],
-                "context": "basic_action"
-            }
-            analysis["intent"] = "action_request"
-            
-            # Handle security context for actions
-            if len(words) > 1 and any(sec_word in input_lower for sec_word in ["exploit", "hack", "attack", "scan", "reconnaissance"]):
-                analysis["intent"] = "security_action_request"
-                analysis["technical_context"] = "security_action"
-                analysis["ethical_context"] = "This request involves security-related actions. I will provide information about security concepts and defensive measures while adhering to ethical guidelines."
-        
-        # Check for security-related queries
+        # Check for security-related queries first
         security_keywords = {
             "exploit": {
                 "context": "exploitation",

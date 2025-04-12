@@ -78,7 +78,7 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
     def analyze(self, user_input, chat_memory: Optional[ChatMemory] = None):
         """Analyze user input for intent and context"""
         analysis = {
-            "intent": "unknown",
+            "intent": "general_query",  # Default to general query instead of unknown
             "command": None,
             "should_execute": False,
             "targets": [],
@@ -119,21 +119,24 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
             if re.search(pattern, input_lower):
                 is_info_request = True
                 break
-                
-        # If we identified an information request and NOT an explicit command request,
-        # immediately set intent to information_request and return
-        if is_info_request and not explicit_request:
+        
+        # Set intent based on pattern matching
+        if explicit_request:
+            analysis["intent"] = "command_request"
+        elif is_info_request:
             analysis["intent"] = "information_request"
-            analysis["should_execute"] = False
-            analysis["command"] = None
-            return analysis
-                
-        # Only proceed with command analysis if there's an explicit request
-        if not explicit_request:
-            analysis["intent"] = "information_request"
-            analysis["should_execute"] = False
-            analysis["command"] = None
-            return analysis
+        else:
+            # If no explicit patterns match, check for implicit command or info intent
+            command_triggers = ["run", "execute", "scan", "check", "show", "list", "find", "get"]
+            info_triggers = ["what", "how", "who", "when", "where", "why", "explain", "tell", "describe"]
+            
+            # Check for command-like words
+            if any(trigger in input_lower.split() for trigger in command_triggers):
+                analysis["intent"] = "command_request"
+            # Check for info-seeking words
+            elif any(trigger in input_lower.split() for trigger in info_triggers):
+                analysis["intent"] = "information_request"
+            # Otherwise keep the default "general_query" intent set earlier
         
         # Extract targets - this should happen regardless of intent
         detected_targets = extract_targets(user_input)

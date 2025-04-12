@@ -172,6 +172,7 @@ Thought Process:
         technical_context = intent_analysis.get("technical_context") if intent_analysis else None
         personal_context = intent_analysis.get("personal_reference") if intent_analysis else None
         answered_context = intent_analysis.get("answered_context") if intent_analysis else None
+        targets = intent_analysis.get("targets", []) if intent_analysis else []
 
         # Initialize reasoning template
         reasoning = {
@@ -323,10 +324,40 @@ Thought Process:
              reasoning["execution_plan"]["steps"] = ["clarify request", "gather contact info (if requested)", "provide assistance"]
 
         else: # General query or other intents
+            # Enhanced handling for general_query intent
             reasoning["response_strategy"]["approach"] = "informative"
             reasoning["response_strategy"]["tone"] = "helpful"
             reasoning["response_strategy"]["technical_level"] = "moderate"
-            reasoning["task_analysis"]["technical_context"] = {"domain": technical_context or "general"}
+            
+            # Determine the best domain based on the query content
+            domain = technical_context or "general"
+            
+            # Look for security-related terms in the task
+            security_terms = ["information gathering", "scan", "reconnaissance", "security", "network", "vulnerability", "exploit", "target"]
+            if any(term in task.lower() for term in security_terms) or targets:
+                domain = "security"
+                # Add security-specific follow-up questions if we detected targets
+                if targets:
+                    reasoning["response_strategy"]["follow_up_questions"] = [
+                        f"Would you like more specific information about {targets[0]}?",
+                        "Would you like to perform a security scan on this target?",
+                        "Are you interested in any specific vulnerabilities?"
+                    ]
+                else:
+                    reasoning["response_strategy"]["follow_up_questions"] = [
+                        "Would you like me to explain security concepts in more detail?",
+                        "Are you interested in specific security tools for this task?",
+                        "Would you like examples of common security techniques?"
+                    ]
+            else:
+                # More general follow-up questions
+                reasoning["response_strategy"]["follow_up_questions"] = [
+                    "Would you like more details about this topic?",
+                    "Is there a specific aspect you're interested in?",
+                    "Would you like examples to help understand better?"
+                ]
+                
+            reasoning["task_analysis"]["technical_context"] = {"domain": domain}
             reasoning["execution_plan"]["steps"] = ["understand query", "provide information", "ask clarifying questions"]
 
         # Combine reasoning components into a single dictionary for the final prompt

@@ -39,3 +39,136 @@ Reserved tokens: 512
 ===================
 
 ^C
+
+inference 2:
+
+
+┌──(SUDO)
+└─> help exploit a target
+Chat memory length: 1
+Processing last 1 messages
+Chat memory tokens used: 9
+Reasoning context tokens: 277
+Final prompt tokens: 4952
+Context window: 15000
+Max response tokens: 15000
+Reserved tokens: 512
+===================
+
+⠋ 🐺 Reasoning...Starting model inference...
+⠋ 🐺 Reasoning... [32.8s]Inference completed in 32.97s
+Response generated: 1753 chars
+Raw response length: 1752 chars
+Cleaned response length: 1752 chars
+⠹ 🐺 Reasoning... [32.9s]
+⏱️ 33.0s
+
+┌──(NIKITA 🐺)
+└─> Hello! I'm Nikita, an AI Offline Security Assistant. Before we proceed, 
+please note that the information provided here is intended for educational 
+purposes only and should not be used to engage in any illegal or unethical 
+activities. Understanding exploits requires knowledge of both the target system 
+and ethical hacking principles.
+
+To exploit a target, you'll need to understand the specific vulnerability being 
+exploited. First, gather information about the target using various tools like 
+Nmap, Amass, Subfinder, or Gobuster. Then, analyze the findings to determine 
+which vulnerabilities pose the greatest risk.
+
+Once you have identified a suitable vulnerability, use Metasploit Framework 
+(`msfconsole`) to search for exploits related to the target system and version. 
+The `search` command allows you to browse through available exploits, while the 
+`info` command provides detailed information about a specific exploit.
+
+After selecting an appropriate exploit, use the `use` command to load it into 
+Metasploit's framework. Then, execute the payload with the `run` or `exploit` 
+command, depending on the exploit type.
+
+Remember to always document your actions and any changes made to the target 
+system. This helps maintain an audit trail and facilitates incident response if 
+needed. Additionally, follow ethical guidelines throughout the process, ensuring
+that you have explicit authorization and scope before attempting any exploits or
+vulnerability scans.
+
+If you're new to exploiting systems, I highly recommend starting with a local 
+lab environment or virtual machine for practice. This allows you to learn 
+without risking damage to production systems.
+
+Please let me know if you have any questions or need further clarification on 
+the process.
+
+
+Proposed Command: msfconsole
+Execute this command? (Y/N): n
+Command execution skipped by user.
+
+┌──(SUDO)
+└─> help exploit a target
+Chat memory length: 3
+Processing last 3 messages
+Chat memory tokens used: 558
+Reasoning context tokens: 277
+Final prompt tokens: 5506
+Context window: 15000
+Max response tokens: 15000
+Reserved tokens: 512
+===================
+
+⠋ 🐺 Reasoning...Starting model inference...
+⠙ 🐺 Reasoning... [24.8s]Inference completed in 24.99s
+Response generated: 1753 chars
+Raw response length: 1752 chars
+Cleaned response length: 1752 chars
+⠸ 🐺 Reasoning... [24.9s]
+⏱️ 25.1s
+
+┌──(NIKITA 🐺)
+└─> Hello! I'm Nikita, an AI Offline Security Assistant. Before we proceed, 
+please note that the information provided here is intended for educational 
+purposes only and should not be used to engage in any illegal or unethical 
+activities. Understanding exploits requires knowledge of both the target system 
+and ethical hacking principles.
+
+To exploit a target, you'll need to understand the specific vulnerability being 
+exploited. First, gather information about the target using various tools like 
+Nmap, Amass, Subfinder, or Gobuster. Then, analyze the findings to determine 
+which vulnerabilities pose the greatest risk.
+
+Once you have identified a suitable vulnerability, use Metasploit Framework 
+(`msfconsole`) to search for exploits related to the target system and version. 
+The `search` command allows you to browse through available exploits, while the 
+`info` command provides detailed information about a specific exploit.
+
+After selecting an appropriate exploit, use the `use` command to load it into 
+Metasploit's framework. Then, execute the payload with the `run` or `exploit` 
+command, depending on the exploit type.
+
+Remember to always document your actions and any changes made to the target 
+system. This helps maintain an audit trail and facilitates incident response if 
+needed. Additionally, follow ethical guidelines throughout the process, ensuring
+that you have explicit authorization and scope before attempting any exploits or
+vulnerability scans.
+
+If you're new to exploiting systems, I highly recommend starting with a local 
+lab environment or virtual machine for practice. This allows you to learn 
+without risking damage to production systems.
+
+Please let me know if you have any questions or need further clarification on 
+the process.
+
+
+Proposed Command: msfconsole
+Execute this command? (Y/N): n
+Command execution skipped by user.
+
+┌──(SUDO)
+└─> help exploit a target x
+Chat memory length: 5
+Processing last 5 messages
+Chat memory tokens used: 1108
+Reasoning context tokens: 277
+Final prompt tokens: 6061
+Context window: 15000
+Max response tokens: 15000
+Reserved tokens: 512
+===================

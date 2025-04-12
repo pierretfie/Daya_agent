@@ -124,13 +124,20 @@ class SemanticContextOptimizer:
     def cluster_by_topic(self, messages):
         """
         Cluster messages by topic for better context organization.
+        NOTE: This function is currently disabled as it was causing issues with responses.
+        Instead, we're using a simpler approach that preserves the original conversation flow.
         
         Args:
             messages (list): List of message dictionaries
             
         Returns:
-            dict: Messages clustered by topic
+            dict: Messages clustered by topic (currently returns empty dict)
         """
+        # DISABLED: Return empty dictionary to prevent topic clustering
+        return {}
+        
+        # The original implementation is commented out below
+        '''
         if not messages:
             return {}
             
@@ -196,6 +203,7 @@ class SemanticContextOptimizer:
                 clusters[new_topic].append(msg)
                 
         return dict(clusters)
+        '''
     
     def prioritize_by_relevance(self, messages, current_task, targets=None):
         """
@@ -424,8 +432,9 @@ class SemanticContextOptimizer:
                 follow_up_questions, tool_context
             )
             
-            # Don't use the simple query check as it's causing the issue
-            # Instead, always apply our enhanced context optimization
+            # IMPORTANT: Don't trim or restructure the prompt as it was causing issues
+            # Return the base optimized prompt without semantic modifications
+            return base_optimized_prompt
             
             # Extract the components from the base optimized prompt
             prompt_parts = base_optimized_prompt.split("\n\n")
@@ -463,19 +472,13 @@ class SemanticContextOptimizer:
                         role, content = line.split(":", 1)
                         messages.append({"role": role.lower(), "content": content.strip()})
                 
-                # Cluster by topic
-                clusters = self.cluster_by_topic(messages)
+                # DISABLED: Cluster by topic - this was causing issues with responses
+                # Instead, keep the original conversation format without clustering
+                new_conversation = ["Recent Conversation:"]
+                for msg in messages:
+                    new_conversation.append(f"{msg['role'].upper()}: {msg['content']}")
                 
-                # Rebuild conversation part with topic headers
-                if clusters:
-                    new_conversation = ["Recent Conversation (by topic):"]
-                    for topic, msgs in clusters.items():
-                        new_conversation.append(f"--- {topic.title()} ---")
-                        for msg in msgs:
-                            new_conversation.append(f"{msg['role'].upper()}: {msg['content']}")
-                        new_conversation.append("")  # Empty line between topics
-                    
-                    conversation_part = "\n".join(new_conversation)
+                conversation_part = "\n".join(new_conversation)
             
             # Enhance reasoning context with entity extraction
             if reasoning_part and current_task:

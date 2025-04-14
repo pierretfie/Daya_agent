@@ -1,6 +1,6 @@
-# Nikita Agent Modules
+# Daya Agent Modules
 
-This directory contains the core modules for the Nikita Agent system.
+This directory contains the core modules for the Daya Agent system.
 
 ## Core Modules
 
@@ -84,7 +84,7 @@ Handles GPU resource management and configuration:
 
 ## Usage
 
-Each module is designed to work independently while integrating seamlessly with the main Nikita Agent system. The modules can be imported and used as needed:
+Each module is designed to work independently while integrating seamlessly with the main Daya Agent system. The modules can be imported and used as needed:
 
 ```python
 from modules import ToolManager, ContextOptimizer, ReasoningEngine
@@ -112,7 +112,7 @@ The reasoning engine (`reasoning_engine.py`) provides a structured framework for
 4. Tool selection and parameter analysis
 5. Risk and precaution assessment
 
-The engine helps Nikita generate more thoughtful and security-aware responses by considering the full context of user requests.
+The engine helps Daya generate more thoughtful and security-aware responses by considering the full context of user requests.
 
 ### Engagement Manager
 
@@ -135,7 +135,7 @@ To add new functionality:
 
 ## GPU Setup for Google Colab
 
-When running Nikita Agent in Google Colab, you'll need to properly set up the CUDA-enabled version of llama-cpp-python to utilize the GPU. Follow these steps:
+When running Daya Agent in Google Colab, you'll need to properly set up the CUDA-enabled version of llama-cpp-python to utilize the GPU. Follow these steps:
 
 ```bash
 # Uninstall current llama-cpp-python
@@ -151,4 +151,4 @@ pip uninstall -y llama-cpp-python
 # !pip install llama-cpp-python-cu11==0.2.6 --extra-index-url=https://pip.repos.neuron.amazonaws.com
 ```
 
-After running these commands, restart your Colab kernel before running the Nikita agent code. This ensures the GPU is properly utilized for model inference, significantly improving performance. 
+After running these commands, restart your Colab kernel before running the Daya agent code. This ensures the GPU is properly utilized for model inference, significantly improving performance. 

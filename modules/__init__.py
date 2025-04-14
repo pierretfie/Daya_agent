@@ -1,7 +1,7 @@
 """
-Nikita Agent Modules
+Daya Agent Modules
 
-This package contains the core modules for the Nikita Agent.
+This package contains the core modules for the Daya Agent.
 """
 
 from .tool_manager import ToolManager

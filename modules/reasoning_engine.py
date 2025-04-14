@@ -1,5 +1,5 @@
 """
-Reasoning Engine Module for Nikita Agent
+Reasoning Engine Module for Daya Agent
 
 Provides structured reasoning for tasks and security-related decision making.
 """

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Semantic Context Optimizer Module for Nikita Agent
+Semantic Context Optimizer Module for Daya Agent
 
 Provides an additional layer of context optimization by analyzing the semantic
 relevance of messages, prioritizing content based on meaning rather than just
@@ -625,7 +625,7 @@ if __name__ == "__main__":
     prompt = semantic_optimizer.get_optimized_prompt(
         chat_memory, 
         current_task, 
-        "You are Nikita, a security assistant."
+        "You are Daya, a security assistant."
     )
     
     print("\nOptimized Prompt:")

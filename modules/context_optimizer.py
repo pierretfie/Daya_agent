@@ -125,7 +125,7 @@ class ContextOptimizer:
         """
         # Enhanced base prompt for security-focused explanations
         if not base_prompt:
-            base_prompt = """You are Nikita 🐺, an Offline AI Security Assistant specializing in clear, structured explanations of security tools and concepts. When responding:
+            base_prompt = """You are Daya 🐺, an Offline AI Security Assistant specializing in clear, structured explanations of security tools and concepts. When responding:
 
 FOR SECURITY TOOL EXPLANATIONS:
 1. Start with a 1-2 sentence overview of what the tool is and its primary purpose
@@ -404,7 +404,7 @@ if __name__ == "__main__":
     prompt = optimizer.get_optimized_prompt(
         chat_memory, 
         current_task, 
-        "You are Nikita, a security assistant."
+        "You are Daya, a security assistant."
     )
     
     print("\nFull Prompt:")

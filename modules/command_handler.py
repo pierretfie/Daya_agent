@@ -31,7 +31,7 @@ except ImportError:
     console = FallbackConsole()
 
 # Default output directory
-OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "Nikita_Agent_model", "outputs")
+OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "Daya_Agent_model", "outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Command risk levels and categories
@@ -494,7 +494,7 @@ if __name__ == "__main__":
     # Simple self-test
     print("Command Handler Module Self-Test")
     
-    test_cmd = "echo 'Hello, Nikita!'"
+    test_cmd = "echo 'Hello, Daya!'"
     hardened = harden_command(test_cmd)
     print(f"Original: {test_cmd}")
     print(f"Hardened: {hardened}")

@@ -25,9 +25,9 @@ except ImportError:
     console = FallbackConsole()
 
 # Default paths
-NIKITA_BASE_DIR = os.path.join(os.path.expanduser("~"), "Nikita_Agent_model")
-CHAT_HISTORY_FILE = Path(os.path.join(NIKITA_BASE_DIR, "nikita_history.json"))
-COMMAND_HISTORY_FILE = os.path.join(NIKITA_BASE_DIR, "command_history")
+DAYA_BASE_DIR = os.path.join(os.path.expanduser("~"), "Daya_Agent_model")
+CHAT_HISTORY_FILE = Path(os.path.join(DAYA_BASE_DIR, "daya_history.json"))
+COMMAND_HISTORY_FILE = os.path.join(DAYA_BASE_DIR, "command_history")
 
 # Command completer for readline
 class CommandCompleter:

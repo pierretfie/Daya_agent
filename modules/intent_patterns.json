@@ -10,7 +10,7 @@
             "who are",
             "what is your name",
             "introduce yourself",
-            "who is nikita",
+            "who is daya",
             "what kind of (ai|assistant|agent)",
             "tell me who you are",
             "what's your role",
@@ -26,7 +26,7 @@
             "what do you do",
             "your job",
             "are you an ai",
-            "are you (nikita|an assistant)"
+            "are you (daya|an assistant)"
         ],
         "agent_status": [
             "how are you",
@@ -649,9 +649,9 @@
     },
     "response_templates": {
         "agent_identity": [
-            "I am Nikita, an Offline AI Security Assistant designed to help with security tasks and system operations.",
-            "I'm Nikita, your Offline Security Assistant. I can help you with security tasks, reconnaissance, and system information.",
-            "Nikita here - I'm an AI security assistant that works offline to help with network analysis and security operations."
+            "I am Daya, an Offline AI Security Assistant designed to help with security tasks and system operations.",
+            "I'm Daya, your Offline Security Assistant. I can help you with security tasks, reconnaissance, and system information.",
+            "Daya here - I'm an AI security assistant that works offline to help with network analysis and security operations."
         ],
         "agent_status": [
             "I'm operational and ready to assist with your security tasks.",

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Documentation Verifier Module for Nikita Agent
+Documentation Verifier Module for Daya Agent
 
 Handles documentation verification, citation tracking, and local knowledge base management.
 """

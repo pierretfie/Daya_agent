@@ -13,7 +13,7 @@ from typing import Dict, Any, List, Union, Optional
 class ResponseCleaner:
     """
     Cleans and formats raw LLM responses to ensure they are human-readable
-    and consistent with Nikita's expected output format.
+    and consistent with Daya's expected output format.
     """
     
     def __init__(self):
@@ -27,8 +27,8 @@ class ResponseCleaner:
         
         # Role prefixes to clean from responses
         self.role_prefixes = [
-            r'^\s*Nikita\s*:\s*',
-            r'^\s*NIKITA\s*:\s*',
+            r'^\s*Daya\s*:\s*',
+            r'^\s*DAYA\s*:\s*',
             r'^\s*Assistant\s*:\s*',
             r'^\s*ASSISTANT\s*:\s*',
             r'^\s*User\s*:\s*',
@@ -84,9 +84,9 @@ class ResponseCleaner:
             # Pattern for numbered steps (e.g., "1. Understand the query: ...")
             re.compile(r'^\s*\d+\.\s*(Understand|Analyze|Identify|Determine|Provide|Ask).*:.*$', re.MULTILINE),
             
-            # Pattern for "As Nikita, ..." prefix
-            re.compile(r'^\s*---\s*As Nikita,\s*---\s*$', re.MULTILINE),
-            re.compile(r'^\s*As Nikita,\s*', re.MULTILINE),
+            # Pattern for "As Daya, ..." prefix
+            re.compile(r'^\s*---\s*As Daya,\s*---\s*$', re.MULTILINE),
+            re.compile(r'^\s*As Daya,\s*', re.MULTILINE),
             
             # Pattern for task analysis headings
             re.compile(r'^\s*Task Analysis:.*$', re.MULTILINE),

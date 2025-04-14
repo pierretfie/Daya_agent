@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tool Manager Module for Nikita Agent
+Tool Manager Module for Daya Agent
 
 Handles tool-related functionality including man pages, help information,
 and tool context management.

@@ -16,20 +16,20 @@ import contextlib
 import torch
 from rich.console import Console
 
-# Determine the directory of the main script (Nikita_agent.py)
+# Determine the directory of the main script (Daya_agent.py)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Base directory for Nikita (where model and output files are)
-NIKITA_BASE_DIR = os.path.join(os.path.expanduser("~"), "Nikita_Agent_model")
+# Base directory for Daya (where model and output files are)
+DAYA_BASE_DIR = os.path.join(os.path.expanduser("~"), "Daya_Agent_model")
 
-# Construct absolute paths relative to NIKITA_BASE_DIR
-MODEL_PATH = os.path.join(NIKITA_BASE_DIR, "mistral.gguf")
-OUTPUT_DIR = os.path.join(NIKITA_BASE_DIR, "outputs")
-HISTORY_FILE = os.path.join(NIKITA_BASE_DIR, "history.json")
-CHAT_HISTORY_FILE = Path(os.path.join(NIKITA_BASE_DIR, "nikita_history.json"))
-COMMAND_HISTORY_FILE = os.path.join(NIKITA_BASE_DIR, "command_history")
+# Construct absolute paths relative to DAYA_BASE_DIR
+MODEL_PATH = os.path.join(DAYA_BASE_DIR, "mistral.gguf")
+OUTPUT_DIR = os.path.join(DAYA_BASE_DIR, "outputs")
+HISTORY_FILE = os.path.join(DAYA_BASE_DIR, "history.json")
+CHAT_HISTORY_FILE = Path(os.path.join(DAYA_BASE_DIR, "daya_history.json"))
+COMMAND_HISTORY_FILE = os.path.join(DAYA_BASE_DIR, "command_history")
 
-# Construct absolute paths to scripts (in the same directory as Nikita_agent.py)
+# Construct absolute paths to scripts (in the same directory as Daya_agent.py)
 PROMPT_TEMPLATE_FILE = os.path.join(SCRIPT_DIR, "modules", "prompt_template.txt")
 FINE_TUNING_FILE = os.path.join(SCRIPT_DIR, "modules", "fine_tuning.json")
 
@@ -54,7 +54,7 @@ from modules.gpu_manager import GPUManager, is_gpu_available, get_gpu_memory
 
 
 # Create necessary directories
-os.makedirs(NIKITA_BASE_DIR, exist_ok=True)
+os.makedirs(DAYA_BASE_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Import model parameters from context_optimizer
@@ -342,7 +342,7 @@ engagement_memory = {
 
 # ===============================
 # === Model Setup ===
-console.print("🧠 [bold red]Waking Nikita 🐺...[/bold red]")
+console.print("🧠 [bold red]Waking Daya 🐺...[/bold red]")
 
 # Optimize system resources
 success, aggressive_mode = optimize_memory_resources()
@@ -524,7 +524,7 @@ with suppress_stderr():
             
             # Prewarm the model AFTER successful initialization
             console.print("[cyan]🔥 Prewarming model...[/cyan]")
-            prewarm_duration = prewarm_model(llm, base_prompt="You are Nikita, an AI Security Assistant.")
+            prewarm_duration = prewarm_model(llm, base_prompt="You are Daya, an AI Security Assistant.")
             console.print(f"✅ [green] Model prewarmed in {prewarm_duration:.2f} seconds[/green]")
             
             # Verify GPU usage without printing detailed logs
@@ -681,7 +681,7 @@ def confirm_and_run_command(cmd):
 
 # === REPLACE main() FUNCTION ===
 def main():
-    """Main function to run the Nikita agent"""
+    """Main function to run the Daya agent"""
     global chat_memory, llm, gpu_manager # Ensure llm and gpu_manager are accessible
 
     # Setup command history with readline
@@ -707,14 +707,14 @@ def main():
     chat_memory = []
     
     # Check if we should load previous chat history (disabled by default)
-    load_previous_history = os.environ.get('NIKITA_LOAD_HISTORY', '0').lower() in ('1', 'true', 'yes')
+    load_previous_history = os.environ.get('DAYA_LOAD_HISTORY', '0').lower() in ('1', 'true', 'yes')
     if load_previous_history:
         chat_memory = load_chat_history(memory_limit=MEMORY_LIMIT, chat_history_file=CHAT_HISTORY_FILE)
         console.print(f"💬 [cyan]Loaded {len(chat_memory)} previous chat messages[/cyan]")
 
     # Print version banner
     console.print("\n[bold red]╔══════════════════════════════════════╗[/bold red]")
-    console.print("[bold red]║[/bold red]     [bold white]NIKITA 🐺 AI AGENT v1.0[/bold white]      [bold red]║[/bold red]")
+    console.print("[bold red]║[/bold red]     [bold white]DAYA 🐺 AI AGENT v1.0[/bold white]      [bold red]║[/bold red]")
     console.print("[bold red]╚══════════════════════════════════════╝[/bold red]\n")
 
     # Import threading capabilities
@@ -722,10 +722,10 @@ def main():
     from concurrent.futures import ThreadPoolExecutor
     
     # Model prewarming is now done during initialization phase above
-    # prewarm_duration = prewarm_model(llm, base_prompt="You are Nikita, an AI Security Assistant.")
+    # prewarm_duration = prewarm_model(llm, base_prompt="You are Daya, an AI Security Assistant.")
     # console.print(f"✅ [cyan] Model prewarmed in {prewarm_duration:.2f} seconds[/cyan]")
     
-    console.print("✅ [cyan]Nikita (Offline Operator Mode) Loaded[/cyan]")
+    console.print("✅ [cyan]Daya (Offline Operator Mode) Loaded[/cyan]")
     console.print("\nType 'exit' to quit, or 'clear' to delete chat memory.")
     console.print("[cyan]Available prompt modes:[/cyan]")
     console.print("• [yellow]basic[/yellow] <command> - Basic mode with minimal context")
@@ -747,9 +747,9 @@ def main():
         try:
             # Reduce number of prefetch prompts
             simple_prompts = [
-                "You are Nikita, an AI Security Assistant. How can I help?",
-                "You are Nikita, an AI Security Assistant. Respond briefly.",
-                "You are Nikita, an AI Security Assistant. Analyze this security concern."
+                "You are Daya, an AI Security Assistant. How can I help?",
+                "You are Daya, an AI Security Assistant. Respond briefly.",
+                "You are Daya, an AI Security Assistant. Analyze this security concern."
             ]
             
             for prompt in simple_prompts:
@@ -809,7 +809,7 @@ def main():
                 save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
                 if history_enabled:
                     save_command_history()
-                console.print("\n[bold red]Nikita:[/bold red] Exiting. Stay frosty.\n")
+                console.print("\n[bold red]Daya:[/bold red] Exiting. Stay frosty.\n")
                 break
             elif user_input_lower == "clear":
                 chat_memory.clear()
@@ -942,7 +942,7 @@ def main():
                     console.print(f"⏱️ {total_time:.1f}s")
                     
                     # Display the response with clear formatting
-                    console.print(f"\n[bold magenta]┌──(NIKITA 🐺)[/bold magenta]")
+                    console.print(f"\n[bold magenta]┌──(DAYA ��)[/bold magenta]")
                     console.print(f"[bold magenta]└─>[/bold magenta] {clean_response}")
                     console.print() # Add an empty line after output for better readability
                     
@@ -1060,13 +1060,13 @@ def main():
                     save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
                     if history_enabled:
                         save_command_history()
-                    console.print("\n[bold red]Nikita:[/bold red] Exiting. Stay frosty.\n")
+                    console.print("\n[bold red]Daya:[/bold red] Exiting. Stay frosty.\n")
                     break
             except KeyboardInterrupt:
                 save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
                 if history_enabled:
                     save_command_history()
-                console.print("\n[bold red]Nikita:[/bold red] Exiting. Stay frosty.\n")
+                console.print("\n[bold red]Daya:[/bold red] Exiting. Stay frosty.\n")
                 break
         except Exception as e:
             console.print(f"[red]Unexpected error:[/red] {str(e)}")

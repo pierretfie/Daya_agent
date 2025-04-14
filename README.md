@@ -1,6 +1,6 @@
-# Nikita Agent 🐺
+# Daya Agent 🐺
 
-Nikita is an offline AI security assistant designed to help with security tasks and system operations. It uses a local language model to provide intelligent responses, command suggestions, and security analysis without requiring internet connectivity.
+Daya is an offline AI security assistant designed to help with security tasks and system operations. It uses a local language model to provide intelligent responses, command suggestions, and security analysis without requiring internet connectivity.
 
 ## Features
 
@@ -18,14 +18,14 @@ Nikita is an offline AI security assistant designed to help with security tasks 
 
 ### 1. Download the AI Model (Mistral-7B)
 
-Since Nikita runs fully offline, you need to download the **Mistral-7B-Instruct** model:
+Since Daya runs fully offline, you need to download the **Mistral-7B-Instruct** model:
 
 ```bash
 # Create the model directory
-mkdir -p ~/Nikita_Agent_model
+mkdir -p ~/Daya_Agent_model
 
 # Download the model
-wget https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q4_K_M.gguf -O ~/Nikita_Agent_model/mistral.gguf
+wget https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q4_K_M.gguf -O ~/Daya_Agent_model/mistral.gguf
 ```
 
 - This downloads **Mistral-7B-Instruct Q4_K_M GGUF**, optimized for CPU inference
@@ -37,8 +37,8 @@ You can install the required Python packages using pip:
 
 ```bash
 # Clone the repository
-git clone https://github.com/pierretfie/Nikita_agent.git
-cd Nikita_agent
+git clone https://github.com/pierretfie/Daya_agent.git
+cd Daya_agent
 
 # Install dependencies
 pip install -r requirements.txt
@@ -82,17 +82,17 @@ pip install --no-cache-dir --force-reinstall llama-cpp-python
 
 Run the agent:
 ```
-python3 Nikita_agent.py
+python3 Daya_agent.py
 ```
 
 ### Operation Modes
 
-Nikita offers two different operation modes to suit various needs:
+Daya offers two different operation modes to suit various needs:
 
 1. **Regular Mode** (Default): Balanced approach with full context management and reasoning
    - Usage: Simply type your command or query
    - Example: `scan my network`
-   - Best for: Most tasks where you want Nikita's full capabilities
+   - Best for: Most tasks where you want Daya's full capabilities
 
 2. **Basic Mode**: Minimalistic responses with reduced context
    - Usage: Prefix your command with `basic`
@@ -107,11 +107,11 @@ Example interactions:
 
 The project is organized into two main parts:
 
-### 1. Agent Code - `/path/to/Nikita_agent/`
+### 1. Agent Code - `/path/to/Daya_agent/`
 
 ```
-Nikita_agent/
-├── Nikita_agent.py       # Main entry point and application logic
+Daya_agent/
+├── Daya_agent.py       # Main entry point and application logic
 ├── modules/              # Modular components
 │   ├── __init__.py       # Package initialization
 │   ├── code_handler.py   # Code detection and execution
@@ -130,16 +130,16 @@ Nikita_agent/
 └── README.md            # This documentation
 ```
 
-### 2. Runtime Data - `~/Nikita_Agent_model/`
+### 2. Runtime Data - `~/Daya_Agent_model/`
 
 ```
-~/Nikita_Agent_model/
+~/Daya_Agent_model/
 ├── mistral.gguf              # The language model file
 ├── outputs/                  # Directory for command output
 │   ├── cmd_20240126_120000.txt
 │   ├── nmap_scan_20240126_120005.txt
 │   └── ... (other output files)
-├── nikita_history.json       # Chat history
+├── daya_history.json       # Chat history
 └── command_history           # Command history from readline
 ```
 
@@ -147,32 +147,32 @@ The agent code can be located anywhere on your system, while the runtime data is
 
 ## Configuration
 
-Nikita is designed to work with minimal configuration. The key paths are:
+Daya is designed to work with minimal configuration. The key paths are:
 
 ```python
-# Base directory for Nikita data (in your home directory)
-NIKITA_BASE_DIR = os.path.join(os.path.expanduser("~"), "Nikita_Agent_model")
+# Base directory for Daya data (in your home directory)
+DAYA_BASE_DIR = os.path.join(os.path.expanduser("~"), "Daya_Agent_model")
 
 # Model path
-MODEL_PATH = os.path.join(NIKITA_BASE_DIR, "mistral.gguf")
+MODEL_PATH = os.path.join(DAYA_BASE_DIR, "mistral.gguf")
 
 # Command outputs directory
-OUTPUT_DIR = os.path.join(NIKITA_BASE_DIR, "outputs")
+OUTPUT_DIR = os.path.join(DAYA_BASE_DIR, "outputs")
 
 # History files
-CHAT_HISTORY_FILE = os.path.join(NIKITA_BASE_DIR, "nikita_history.json")
-COMMAND_HISTORY_FILE = os.path.join(NIKITA_BASE_DIR, "command_history")
+CHAT_HISTORY_FILE = os.path.join(DAYA_BASE_DIR, "daya_history.json")
+COMMAND_HISTORY_FILE = os.path.join(DAYA_BASE_DIR, "command_history")
 ```
 
 By default, the agent:
 
-- Stores the model in `~/Nikita_Agent_model/mistral.gguf`
-- Saves command outputs to `~/Nikita_Agent_model/outputs/`
-- Maintains conversation history in `~/Nikita_Agent_model/nikita_history.json`
-- Preserves command history in `~/Nikita_Agent_model/command_history`
+- Stores the model in `~/Daya_Agent_model/mistral.gguf`
+- Saves command outputs to `~/Daya_Agent_model/outputs/`
+- Maintains conversation history in `~/Daya_Agent_model/daya_history.json`
+- Preserves command history in `~/Daya_Agent_model/command_history`
 - Automatically optimizes for your system's resources
 
-These paths can be customized by editing the constants at the beginning of `Nikita_agent.py`.
+These paths can be customized by editing the constants at the beginning of `Daya_agent.py`.
 
 ## Modular Design
 
@@ -265,7 +265,7 @@ CMAKE_ARGS="-DLLAMA_METAL=ON" pip install --no-cache-dir --force-reinstall llama
 To extend the agent's capabilities:
 
 1. Add new modules to the `modules/` directory
-2. Update imports in `Nikita_agent.py`
+2. Update imports in `Daya_agent.py`
 3. Extend the relevant classes or functions
 
 ## Dependencies
@@ -278,4 +278,4 @@ To extend the agent's capabilities:
 
 ---
 
-*Nikita - Stay frosty.*
+*Daya - Stay frosty.*

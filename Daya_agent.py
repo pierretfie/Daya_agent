@@ -15,6 +15,10 @@ import warnings
 import contextlib
 import torch
 from rich.console import Console
+from rich.prompt import Prompt
+from rich.panel import Panel
+from rich.text import Text
+from typing import Dict, List, Optional, Tuple, Any
 
 # Determine the directory of the main script (Daya_agent.py)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -49,9 +53,16 @@ from modules.engagement_manager import extract_targets, suggest_attack_plan, eng
 from modules.reasoning_engine import ReasoningEngine
 from modules.tool_manager import ToolManager
 from modules.gpu_manager import GPUManager, is_gpu_available, get_gpu_memory
-
-
-
+from modules import (
+    ToolManager, DocumentationVerifier, IntentAnalyzer, ContextOptimizer,
+    SemanticContextOptimizer, ResponseCleaner, run_command, extract_targets,
+    suggest_attack_plan, engagement_memory, ReasoningEngine, GPUManager,
+    is_gpu_available, get_gpu_memory, setup_command_history, save_command_history,
+    get_input_with_history, load_chat_history, save_chat_history,
+    get_system_info, get_dynamic_params, optimize_memory_resources,
+    optimize_cpu_usage, prewarm_model
+)
+from gemini import get_gemini_response
 
 # Create necessary directories
 os.makedirs(DAYA_BASE_DIR, exist_ok=True)
@@ -682,44 +693,32 @@ def confirm_and_run_command(cmd):
 # === REPLACE main() FUNCTION ===
 def main():
     """Main function to run the Daya agent"""
-    global chat_memory, llm, gpu_manager # Ensure llm and gpu_manager are accessible
-
-    # Setup command history with readline
-    history_enabled = setup_command_history()
-
+    global chat_memory, llm, gpu_manager
     
-
-    # Verify model file exists
-    if not os.path.exists(MODEL_PATH):
-        console.print(f"\n[bold red]Error:[/bold red] Model file not found at {MODEL_PATH}")
-        console.print("[yellow]Please ensure the model file is placed in the correct location.[/yellow]")
-        return
-        
-    # Check if llm was successfully initialized before proceeding
-    if llm is None:
-        console.print("[red]Model initialization failed. Exiting.[/red]")
-        # Attempt cleanup even if init failed
-        if 'gpu_manager' in globals() and gpu_manager is not None:
-             gpu_manager.cleanup()
-        return # Exit main function gracefully
-
-    # Start with a fresh chat memory by default to avoid mixing old conversations
-    chat_memory = []
+    # Select model
+    model_type = select_model()
+    llm, model_type = initialize_model(model_type)
+    
+    # Initialize GPU manager
+    gpu_manager = GPUManager()
     
     # Check if we should load previous chat history (disabled by default)
     load_previous_history = os.environ.get('DAYA_LOAD_HISTORY', '0').lower() in ('1', 'true', 'yes')
     if load_previous_history:
         chat_memory = load_chat_history(memory_limit=MEMORY_LIMIT, chat_history_file=CHAT_HISTORY_FILE)
-        console.print(f"💬 [cyan]Loaded {len(chat_memory)} previous chat messages[/cyan]")
-
+    else:
+        chat_memory = []
+    
     # Print version banner
     console.print("\n[bold red]╔══════════════════════════════════════╗[/bold red]")
     console.print("[bold red]║[/bold red]     [bold white]DAYA 🐺 AI AGENT v1.0[/bold white]      [bold red]║[/bold red]")
     console.print("[bold red]╚══════════════════════════════════════╝[/bold red]\n")
-
-    # Import threading capabilities
-    import threading
-    from concurrent.futures import ThreadPoolExecutor
+    
+    # Print model info
+    console.print(f"[cyan]Using: {MODEL_CHOICES['1' if model_type == 'mistral' else '2']}[/cyan]")
+    
+    # Initialize command history
+    setup_command_history()
     
     # Model prewarming is now done during initialization phase above
     # prewarm_duration = prewarm_model(llm, base_prompt="You are Daya, an AI Security Assistant.")
@@ -728,383 +727,95 @@ def main():
     console.print("✅ [cyan]Daya (Offline Operator Mode) Loaded[/cyan]")
     console.print("\nType 'exit' to quit, or 'clear' to delete chat memory.")
     console.print("[cyan]Available prompt modes:[/cyan]")
-    console.print("• [yellow]basic[/yellow] <command> - Basic mode with minimal context")
-    console.print("• Regular commands use full context by default\n")
-    if chat_memory:
-        pass
-        #console.print(f"💬 Loaded {len(chat_memory)} previous chat messages")
+    console.print("  - Regular: Full context and reasoning")
+    console.print("  - Basic: Direct, concise responses")
+    console.print("  - Expert: Technical, detailed responses")
+    console.print("  - Debug: Verbose output with reasoning")
     
-    # More concise display of active targets if any
-    if engagement_memory["targets"]:
-        console.print(f"🎯 Active targets: {', '.join(engagement_memory['targets'])}")
-
-    # Create a thread pool for background tasks
-    executor = ThreadPoolExecutor(max_workers=2)
-
-    # Prefetch common prompts to warm up cache
-    def prefetch_common_tasks():
-        """Prefetch common prompts with better error handling"""
-        try:
-            # Reduce number of prefetch prompts
-            simple_prompts = [
-                "You are Daya, an AI Security Assistant. How can I help?",
-                "You are Daya, an AI Security Assistant. Respond briefly.",
-                "You are Daya, an AI Security Assistant. Analyze this security concern."
-            ]
-            
-            for prompt in simple_prompts:
-                try:
-                    # Add delay between prefetches
-                    time.sleep(0.5)
-                    # Run inference with minimal tokens in background
-                    _ = llm(prompt, max_tokens=1)
-                except Exception as e:
-                    console.print(f"[yellow]Prefetch warning for prompt: {str(e)}[/yellow]")
-                    continue
-            return True
-        except Exception as e:
-            console.print(f"[yellow]Prefetch error: {str(e)}[/yellow]")
-            return False
-
-    # Start prefetching in background with better error handling
+    # Start background processing thread
+    background_thread = threading.Thread(target=background_processing, daemon=True)
+    background_thread.start()
+    
     try:
-        prefetch_future = executor.submit(prefetch_common_tasks)
-        
-        # Let prefetch run without timeout
-        try:
-            prefetch_success = prefetch_future.result()  # No timeout
-            if prefetch_success:
-                console.print("[cyan]✅ Common prompts prefetched successfully[/cyan]")
-            else:
-                console.print("[yellow]⚠️ Some prompts failed to prefetch[/yellow]")
-        except Exception as e:
-            console.print(f"[yellow]Prefetch error: {str(e)}[/yellow]")
-            # Cancel the prefetch if it's still running
-            if not prefetch_future.done():
-                prefetch_future.cancel()
-    except Exception as e:
-        console.print(f"[yellow]Failed to start prefetch: {str(e)}[/yellow]")
-
-    # Initialize tool manager after other initializations
-    tool_manager = ToolManager(fine_tuning_file=FINE_TUNING_FILE)
-
-    while True:
-        try:
-            console.print("\n[bold cyan]┌──(SUDO)[/bold cyan]")
-            console.print(f"[bold cyan]└─>[/bold cyan] ", end="") 
-
-            # Get user input with readline support (history, editing)
-            if history_enabled:
+        while True:
+            try:
                 user_input = get_input_with_history()
-            else:
-                user_input = input().strip()
-
-            # Handle empty input by continuing to the next loop iteration
-            if not user_input:
-                continue
-
-            # Handle special commands
-            user_input_lower = user_input.lower()
-            if user_input_lower in ["exit", "quit"]:
-                save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
-                if history_enabled:
-                    save_command_history()
-                console.print("\n[bold red]Daya:[/bold red] Exiting. Stay frosty.\n")
-                break
-            elif user_input_lower == "clear":
-                chat_memory.clear()
-                console.print("[green]Chat memory has been cleared! 🧹[/green]")
-                continue
-            elif user_input_lower in ["load history", "loadhistory"]:
-                chat_memory = load_chat_history(memory_limit=MEMORY_LIMIT, chat_history_file=CHAT_HISTORY_FILE)
-                console.print(f"💬 [cyan]Loaded {len(chat_memory)} previous chat messages[/cyan]")
-                continue
-
-            # Add user input to chat memory
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            chat_memory.append({
-                "role": "user",
-                "content": user_input,
-                "timestamp": timestamp
-            })
-
-            # Enforce memory limit
-            if len(chat_memory) > MEMORY_LIMIT:
-                chat_memory = chat_memory[-MEMORY_LIMIT:]
-
-            # Parallelize non-critical tasks
-            def background_processing():
-                try:
-                    extract_targets(user_input)
-                    return suggest_attack_plan(user_input)
-                except Exception as e:
-                    return None
-
-            # Start background processing
-            attack_plan_future = executor.submit(background_processing)
-
-            # NEW: Analyze intent first (this is faster)
-            intent_analysis = intent_analyzer.analyze(user_input)
-
-            # Get attack plan result if ready, otherwise continue without waiting
-            try:
-                attack_plan = attack_plan_future.result(timeout=0.1)  # Short timeout
-                if attack_plan:
-                    console.print(f"\n[yellow][Attack Plan][/yellow] {attack_plan}")
-            except:
-                # Continue without attack plan if it's taking too long
-                pass
-
-            # Generate reasoning - do quickly and in background if possible
-            try:
-                # Pass the result of intent analysis to the reasoning engine
-                reasoning_future = executor.submit(reasoning_engine.analyze_task, user_input, intent_analysis=intent_analysis)
-
-                # Get reasoning result with timeout and better error handling
-                try:
-                    reasoning_result = reasoning_future.result(timeout=0.5)  # Short timeout to avoid blocking
-                except Exception as e:
-                    console.print(f"[yellow]Reasoning timeout or error: {str(e)}[/yellow]")
-                    reasoning_result = {"reasoning": {}, "follow_up_questions": []}
-                    if not reasoning_future.done():
-                        reasoning_future.cancel()
-            except Exception as e:
-                console.print(f"[yellow]Failed to start reasoning: {str(e)}[/yellow]")
-                reasoning_result = {"reasoning": {}, "follow_up_questions": []}
-
-            # Generate base prompt
-            base_prompt = context_optimizer.get_optimized_prompt(
-                chat_memory=chat_memory[-10:],
-                current_task=user_input,
-                base_prompt=PROMPT_TEMPLATE if not user_input.lower().startswith("basic") else None,
-                reasoning_context=reasoning_result.get("reasoning", {}),
-                follow_up_questions=reasoning_result.get("follow_up_questions", []),
-                tool_context=None if user_input.lower().startswith("basic") else 
-                    tool_manager.get_tool_context(reasoning_result.get("tool_name")) if reasoning_result.get("tool_name") else None
-            )
-            
-            # Determine prompt type based on user input
-            prompt_type = 'full'  # default
-            if user_input.lower().startswith("basic"):
-                prompt_type = 'basic'
-
-            # --- DEBUG START ---
-            # print(f"\n{'='*20} DEBUG INFO {'='*20}")
-            # print(f"Intent Analysis: {intent_analysis}")
-            # print(f"--- Full Prompt Sent to LLM: ---\n{full_prompt}")
-            # print("---------------------------------")
-            # # --- DEBUG END ---
-
-            with Progress(
-                SpinnerColumn(spinner_name="dots"),
-                TextColumn("[progress.description]{task.description}"),
-                transient=True,
-            ) as progress:
-                start_time = time.time()
-                task_id = progress.add_task("🐺 Reasoning...", total=None)
+                if not user_input:
+                    continue
                 
-                # Update the timer every 0.1 seconds
-                timer_running = True
-                def update_timer():
-                    while timer_running:
-                        elapsed = time.time() - start_time
-                        progress.update(task_id, description=f"🐺 Reasoning... [{elapsed:.1f}s]")
-                        time.sleep(0.1)
+                user_input_lower = user_input.lower()
                 
-                # Start the timer update thread
-                timer_thread = threading.Thread(target=update_timer)
-                timer_thread.daemon = True
-                timer_thread.start()
-
-                # Generate response using cached response function for better performance
-                try:
-                    output = get_cached_response(base_prompt, prompt_type=prompt_type)
-                    response = output['choices'][0]['text'].strip()
-                    
-                    # Clean the response using the response cleaner
-                    cleaned_result = response_cleaner.clean_response(response)
-                    clean_response = response_cleaner.format_for_display(cleaned_result)
-                    
-                    # Extract commands from the response if any
-                    extracted_commands = cleaned_result.get('commands', [])
-                    
-                    # Ensure we have content to display
-                    if not clean_response:
-                        clean_response = "I apologize, but I encountered an issue generating a response. Please try rephrasing your question."
-                    
-                    # Stop the timer thread and progress spinner before displaying response
-                    timer_running = False
-                    timer_thread.join(timeout=0.2)  # Wait for thread to finish
-                    progress.stop()
-                    
-                    # Display total elapsed time
-                    total_time = time.time() - start_time
-                    console.print(f"⏱️ {total_time:.1f}s")
-                    
-                    # Display the response with clear formatting
-                    console.print(f"\n[bold magenta]┌──(DAYA ��)[/bold magenta]")
-                    console.print(f"[bold magenta]└─>[/bold magenta] {clean_response}")
-                    console.print() # Add an empty line after output for better readability
-                    
-                except Exception as e:
-                    console.print(f"[red]Error generating response: {str(e)}[/red]")
-                    console.print("[yellow]Please try rephrasing your question.[/yellow]")
-
-                # Process any commands extracted by the response cleaner
-                extracted_commands = cleaned_result.get('commands', [])
-                command_to_execute = extracted_commands[0] if extracted_commands else None
-                
-                executed_command_this_turn = False # Flag to avoid double execution
-
-                if intent_analysis and intent_analysis.get("command") and intent_analysis.get("should_execute", False):
-                    # Execute command from intent analysis (with confirmation)
-                    cmd = intent_analysis["command"]
-                    
-                    # Check if it's a help request (don't need confirmation for help)
-                    if cmd.lower().startswith(('help', 'man')):
-                        tool_name = cmd.split()[-1]
-                        if tool_name in system_commands:
-                            tool_help = tool_manager.get_tool_help(tool_name)
-                            if tool_help:
-                                console.print(f"\n[bold cyan]Help for {tool_name}:[/bold cyan]")
-                                if tool_help.get("source") == "man_page":
-                                    console.print(f"[bold]Name:[/bold] {tool_help.get('name', 'N/A')}")
-                                    console.print(f"[bold]Synopsis:[/bold] {tool_help.get('synopsis', 'N/A')}")
-                                    console.print(f"[bold]Description:[/bold] {tool_help.get('description', 'N/A')}")
-                                    if tool_help.get('options'):
-                                        console.print(f"[bold]Options:[/bold] {tool_help['options']}")
-                                    if tool_help.get('examples'):
-                                        console.print(f"[bold]Examples:[/bold] {tool_help['examples']}")
-                                else:
-                                    console.print(tool_help.get('help_text', 'No help text found.'))
-                            else:
-                                console.print(f"[yellow]No help information available for {tool_name}[/yellow]")
-                            executed_command_this_turn = True # Treat help display as handled
-                        else:
-                            # If help is for an unknown command, ask to run it
-                            confirm_and_run_command(cmd)
-                            executed_command_this_turn = True
-                    else:
-                        # Ask for confirmation for non-help commands
-                        confirm_and_run_command(cmd)
-                        executed_command_this_turn = True
-
-                elif command_to_execute and not executed_command_this_turn:
-                    # Execute command from response (with confirmation)
-                    cmd = command_to_execute
-                    
-                    # Check if it's a help request (don't need confirmation)
-                    if cmd.lower().startswith(('help', 'man')):
-                        tool_name = cmd.split()[-1]
-                        if tool_name in system_commands:
-                            tool_help = tool_manager.get_tool_help(tool_name)
-                            if tool_help:
-                                console.print(f"\n[bold cyan]Help for {tool_name}:[/bold cyan]")
-                                if tool_help.get("source") == "man_page":
-                                    console.print(f"[bold]Name:[/bold] {tool_help.get('name', 'N/A')}")
-                                    console.print(f"[bold]Synopsis:[/bold] {tool_help.get('synopsis', 'N/A')}")
-                                    console.print(f"[bold]Description:[/bold] {tool_help.get('description', 'N/A')}")
-                                    if tool_help.get('options'):
-                                        console.print(f"[bold]Options:[/bold] {tool_help['options']}")
-                                    if tool_help.get('examples'):
-                                        console.print(f"[bold]Examples:[/bold] {tool_help['examples']}")
-                                else:
-                                    console.print(tool_help.get('help_text', 'No help text found.'))
-                            else:
-                                console.print(f"[yellow]No help information available for {tool_name}[/yellow]")
-                            executed_command_this_turn = True
-                        else:
-                            # If help is for an unknown command, ask to run it
-                            confirm_and_run_command(cmd)
-                    else:
-                        # Ask for confirmation for non-help commands
-                        confirm_and_run_command(cmd)
-                
-                # Save the response to chat memory immediately to ensure conversation continuity
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                chat_memory.append({
-                    "role": "assistant",
-                    "content": clean_response,  # Save the cleaned response, not the raw one
-                    "timestamp": timestamp,
-                    "reasoning_context": reasoning_result.get("reasoning", {}),
-                    "follow_up_questions": reasoning_result.get("follow_up_questions", [])
-                })
-                
-                # Save chat history in background to avoid blocking
-                def save_history_in_background():
-                    try:
-                        save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
-                        #print(f"Debug: Saved chat history with {len(chat_memory)} messages")
-                    except Exception as e:
-                        print(f"Debug: Error saving chat history: {e}")
-                
-                # Execute save in background to avoid blocking
-                executor.submit(save_history_in_background)
-        except KeyboardInterrupt:
-            # Make sure to stop the timer if it exists in this scope
-            if 'timer_running' in locals():
-                timer_running = False
-                if 'timer_thread' in locals():
-                    timer_thread.join(timeout=0.2)
-                # Display total elapsed time
-                if 'start_time' in locals():
-                    total_time = time.time() - start_time
-                    console.print(f"⏱️ {total_time:.1f}s")
-            console.print("[yellow]Processing interrupted by user[/yellow]")
-            
-            # Handle the interruption gracefully
-            console.print("\n[yellow]Command interrupted. Press Ctrl+C again to exit or Enter to continue.[/yellow]")
-            try:
-                # Give the user a chance to exit with another Ctrl+C or continue
-                if input().strip().lower() in ["exit", "quit"]:
+                if user_input_lower == "exit":
                     save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
                     if history_enabled:
                         save_command_history()
                     console.print("\n[bold red]Daya:[/bold red] Exiting. Stay frosty.\n")
                     break
+                
+                # Process user input and get response
+                response = process_user_input(user_input, model_type, llm)
+                
+                # Display response
+                console.print(f"\n[bold magenta]┌──(DAYA 🐺)[/bold magenta]")
+                console.print(f"[bold magenta]└─>[/bold magenta] {response}")
+                console.print() # Add an empty line after output for better readability
+                
+                # Add to chat memory
+                chat_memory = add_to_chat_memory(chat_memory, "user", user_input)
+                chat_memory = add_to_chat_memory(chat_memory, "assistant", response)
+                
             except KeyboardInterrupt:
                 save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
                 if history_enabled:
                     save_command_history()
                 console.print("\n[bold red]Daya:[/bold red] Exiting. Stay frosty.\n")
                 break
-        except Exception as e:
-            console.print(f"[red]Unexpected error:[/red] {str(e)}")
-            console.print("[yellow]Continuing to next prompt...[/yellow]")
-    
-    # Shutdown executor pool cleanly
-    executor.shutdown(wait=False)
+            except Exception as e:
+                console.print(f"\n[red]Error: {str(e)}[/red]")
+                continue
+                
+    except Exception as e:
+        save_chat_history(chat_memory, chat_history_file=CHAT_HISTORY_FILE)
+        if history_enabled:
+            save_command_history()
+        console.print("\n[bold red]Daya:[/bold red] Exiting. Stay frosty.\n")
+        console.print(f"[red]Error: {str(e)}[/red]")
 
-    # Explicitly clean up resources before exit
-    print("Cleaning up resources...")
-    # Clean up llama object first
-    if 'llm' in globals() and llm is not None:
-        try:
-            print("Releasing Llama model resources...")
-            # llama_cpp.Llama doesn't have a close() method, but we can help Python's GC
-            # by explicitly deleting the reference and forcing garbage collection
-            del llm
-            import gc
-            gc.collect()
-            print("Llama model resources released.")
-        except Exception as e:
-            print(f"Error releasing Llama model resources: {e}")
-        llm = None # Ensure reference is gone
+def select_model():
+    """Let user select which model to use"""
+    console.print("\n[bold cyan]Select Model:[/bold cyan]")
+    for key, value in MODEL_CHOICES.items():
+        console.print(f"[bold green]{key}[/bold green]: {value}")
     
-    # Clean up GPU manager after Llama
-    if 'gpu_manager' in globals() and gpu_manager is not None:
-        try:
-            print("Cleaning up GPU Manager...")
-            gpu_manager.cleanup()
-            print("GPU Manager cleaned up.")
-        except Exception as e:
-            print(f"Error cleaning up GPU Manager: {e}")
-        gpu_manager = None # Ensure reference is gone
+    while True:
+        choice = Prompt.ask("\nEnter your choice", choices=list(MODEL_CHOICES.keys()))
+        if choice == "1":
+            return "mistral"
+        elif choice == "2":
+            return "gemini"
+        console.print("[red]Invalid choice. Please try again.[/red]")
 
-    # Optional: Force garbage collection again after explicit cleanup
-    import gc
-    gc.collect()
-    print("Cleanup complete.")
+def initialize_model(model_type):
+    """Initialize the selected model"""
+    if model_type == "mistral":
+        # Initialize Mistral model
+        llm = initialize_mistral_model()
+        return llm, "mistral"
+    else:
+        # Initialize Gemini API
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key or api_key == "YOUR_API_KEY_HERE":
+            console.print("[red]❌ Please set the GEMINI_API_KEY environment variable.[/red]")
+            console.print("[yellow]You can set it with: export GEMINI_API_KEY='your-api-key'[/yellow]")
+            sys.exit(1)
+        return None, "gemini"
+
+def get_model_response(model_type, prompt, llm=None):
+    """Get response from the selected model"""
+    if model_type == "mistral":
+        return get_mistral_response(prompt, llm)
+    else:
+        return get_gemini_response(prompt)
 
 def select_device():
     if torch.cuda.is_available() and is_gpu_available():

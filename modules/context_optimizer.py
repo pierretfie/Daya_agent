@@ -10,7 +10,8 @@ import re
 import psutil
 from datetime import datetime
 import json
-
+from rich.console import Console
+console = Console()
 # Default token limits
 DEFAULT_MAX_TOKENS = 15000 #increase from 2048 due to large input
 DEFAULT_RESERVE_TOKENS = 512
@@ -125,36 +126,7 @@ class ContextOptimizer:
         """
         # Enhanced base prompt for security-focused explanations
         if not base_prompt:
-            base_prompt = """You are Daya 🐺, an Offline AI Security Assistant specializing in clear, structured explanations of security tools and concepts. When responding:
-
-FOR SECURITY TOOL EXPLANATIONS:
-1. Start with a 1-2 sentence overview of what the tool is and its primary purpose
-2. List key capabilities and features in bullet points (3-5 points)
-3. Provide basic syntax using code blocks with clear formatting, showing main flags/arguments
-4. Explain relevant security implications and potential attack/defense scenarios
-5. Show 1-2 practical example commands with brief explanations of what they do
-6. Include potential risks, ethical considerations, or legal implications if relevant
-
-FOR SECURITY CONCEPT EXPLANATIONS:
-1. Begin with a clear definition of the concept in 1-2 sentences
-2. Explain the security relevance and why it matters
-3. Describe how the concept is applied in real-world security contexts
-4. Include related threats or vulnerabilities
-5. Provide mitigation strategies or best practices
-6. Reference related security tools or technologies if applicable
-
-IMPORTANT GUIDELINES:
-- Only suggest commands when explicitly requested with phrases like "run", "execute", or "show me the command"
-- Structure your responses with clear sections and bullet points for readability
-- Prioritize technical accuracy and practical security knowledge
-- Focus on the specific question without unnecessary information
-- For comparison questions, use a clear side-by-side format highlighting key differences
-
-AVOID:
-- Suggesting commands for general information questions
-- Lengthy introductions or unnecessary explanations
-- Vague or non-technical descriptions
-- Command examples without proper syntax or explanations"""
+            base_prompt = "You are Daya, an AI Security Assistant. Respond directly and concisely to the user's request."
             
         # Check prompt cache first
         cache_key = f"{base_prompt}_{current_task}_{len(chat_memory)}"
@@ -171,8 +143,8 @@ AVOID:
         # Debug: Print chat memory info
         actual_message_count = len(chat_memory)
         messages_to_process = min(15, actual_message_count)
-        print(f"Chat memory length: {actual_message_count}")
-        print(f"Processing last {messages_to_process} messages")
+        console.print(f"[dim]Chat memory length: {actual_message_count}[/dim]")
+        console.print(f"[dim]Processing last {messages_to_process} messages[/dim]")
         
         # Add messages while staying within token limit
         chat_tokens = 0
@@ -198,7 +170,7 @@ AVOID:
                 context_messages.insert(0, message)  # Add to start since we're processing in reverse
                 total_tokens += message_tokens
         
-        print(f"Chat memory tokens used: {chat_tokens}")
+        console.print(f"[dim]Chat memory tokens used: {chat_tokens}[/dim]")
         
         context_str = "\n".join(context_messages)
         
@@ -219,7 +191,7 @@ AVOID:
                 reasoning_context["active_targets"] = targets
             reasoning_str = f"\nReasoning Context:\n{json.dumps(reasoning_context, indent=2)}"
             reasoning_tokens = self.estimate_tokens(reasoning_str)
-            print(f"Reasoning context tokens: {reasoning_tokens}")
+            console.print(f"[dim]Reasoning context tokens: {reasoning_tokens}[/dim]")
             # Always include reasoning context as it's critical for good responses
             # Don't skip it even if it would exceed the context window
             # If needed, we'll truncate other less important parts instead
@@ -229,7 +201,7 @@ AVOID:
         if follow_up_questions:
             follow_up_str = f"\nFollow-up Questions:\n" + "\n".join(f"- {q}" for q in follow_up_questions)
             follow_up_tokens = self.estimate_tokens(follow_up_str)
-            print(f"Follow-up questions tokens: {follow_up_tokens}")
+            console.print(f"[dim]Follow-up questions tokens: {follow_up_tokens}[/dim]")
             # Always include follow-up questions as they guide the model
             # Don't skip them even if they would exceed the context window
         
@@ -238,7 +210,7 @@ AVOID:
         if targets:
             targets_str = f"\nActive Targets:\n" + "\n".join(f"- {t}" for t in targets)
             target_tokens = self.estimate_tokens(targets_str)
-            print(f"Targets tokens: {target_tokens}")
+            console.print(f"[dim]Targets tokens: {target_tokens}[/dim]")
             if total_tokens + target_tokens > self.context_window - self.reserve_tokens:
                 print("Skipping targets due to context window limit")
                 targets_str = ""  # Skip if it would exceed context window
@@ -311,11 +283,11 @@ Do not apologize or give generic responses. Focus on providing actionable inform
         
         # Print final token count
         final_tokens = self.estimate_tokens(prompt)
-        print(f"Final prompt tokens: {final_tokens}")
-        print(f"Context window: {self.context_window}")
-        print(f"Max response tokens: {self.max_tokens}")
-        print(f"Reserved tokens: {self.reserve_tokens}")
-        print("===================\n")
+        console.print(f"[dim]Final prompt tokens: {final_tokens}[/dim]")
+        console.print(f"[dim]Context window: {self.context_window}[/dim]")
+        console.print(f"[dim]Max response tokens: {self.max_tokens}[/dim]")
+        console.print(f"[dim]Reserved tokens: {self.reserve_tokens}[/dim]")
+        console.print("[dim]===================\n[/dim]")
         
         # Cache the result
         self.prompt_cache[cache_key] = prompt

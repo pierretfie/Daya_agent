@@ -35,7 +35,7 @@ def get_dynamic_params():
         n_batch = 384  # Restored original value
     else:  # Low-memory systems
         ram_target_utilization = 0.6  # Reduced from 0.55
-        context_limit = DEFAULT_MAX_TOKENS
+        context_limit = DEFAULT_MAX_TOKENS // 10
         n_batch = 256  # Restored original value
 
     # Ensure we don't exceed available RAM

@@ -2,7 +2,16 @@
 
 import os
 import shlex
-from llama_cpp import Llama
+# === Added Gemini Check ===
+# USE_GEMINI = os.environ.get('USE_GEMINI', '0').lower() in ('1', 'true', 'yes') # Removed USE_GEMINI env var check
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# =========================
+
+# Conditionally import Llama only if not using Gemini (logic will be adjusted later)
+# We might need both depending on user choice, let's import conditionally within the logic
+# from llama_cpp import Llama # Moved conditional import lower
+# from gemini_client import GeminiClient # Moved conditional import lower
+
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 import json
@@ -23,7 +32,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DAYA_BASE_DIR = os.path.join(os.path.expanduser("~"), "Daya_Agent_model")
 
 # Construct absolute paths relative to DAYA_BASE_DIR
-MODEL_PATH = os.path.join(DAYA_BASE_DIR, "mistral.gguf")
+#MODEL_PATH = os.path.join(DAYA_BASE_DIR, "mistral.gguf")
+MODEL_PATH = os.path.join(DAYA_BASE_DIR, "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
 OUTPUT_DIR = os.path.join(DAYA_BASE_DIR, "outputs")
 HISTORY_FILE = os.path.join(DAYA_BASE_DIR, "history.json")
 CHAT_HISTORY_FILE = Path(os.path.join(DAYA_BASE_DIR, "daya_history.json"))
@@ -50,8 +60,13 @@ from modules.reasoning_engine import ReasoningEngine
 from modules.tool_manager import ToolManager
 from modules.gpu_manager import GPUManager, is_gpu_available, get_gpu_memory
 
+# Conditionally import Llama-specific things if needed
+# if not USE_GEMINI: # <-- REMOVE THIS BLOCK
+#     import torch # torch is primarily used for GPU checks with Llama <-- REMOVE THIS BLOCK
 
-
+# Import Gemini client if needed (moved up)
+# if USE_GEMINI:
+#     from gemini_client import GeminiClient
 
 # Create necessary directories
 os.makedirs(DAYA_BASE_DIR, exist_ok=True)
@@ -438,119 +453,186 @@ os.environ['LLAMA_CPP_VERBOSE'] = '0'  # Suppress additional llama.cpp verbose o
 
 # Initialize model with stderr suppression
 llm = None # Initialize llm to None
+gpu_manager = None # Initialize gpu_manager to None
+using_gemini = False # Flag to track which model is used
 
-# Start stderr suppression before any imports or initialization
-with suppress_stderr():
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
+# === Model Selection Logic ===
+
+# Prompt user for model choice
+if GEMINI_API_KEY:
+    console.print("Choose a model to use:")
+    console.print("1. Local Llama (Requires model file)")
+    console.print("2. Gemini API (Requires GEMINI_API_KEY)")
+    while True:
         try:
-            # Initialize GPU manager with minimal output
-            gpu_manager = GPUManager()
-            gpu_manager.set_suppress_output(True)  # Suppress GPU manager logs
-            
-            # Redirect stderr during GPU initialization
-            with open(os.devnull, 'w') as fnull:
-                with contextlib.redirect_stderr(fnull):
-                    # Initialize GPU manager (can take args like preferred_gpu='nvidia')
-                    gpu_init_success = gpu_manager.initialize()
-            
-            device_info = None # Default to None
-            n_gpu_layers = 0   # Default to CPU-only
-
-            if gpu_init_success:
-                device_info = gpu_manager.get_device_info()
-            
-            # Check if device_info is valid before accessing keys
-            if device_info:
-                power_analysis = is_gpu_powerful(device_info) # power_analysis is defined above
-                
-                # Use appropriate settings based on power analysis (example, adjust as needed)
-                if power_analysis['is_powerful']:
-                    work_split_ratio = 0.7  # Example: More GPU
-                    # tensor_split = [0.3, 0.7] # tensor_split isn't directly used by Llama constructor here
-                else:
-                    work_split_ratio = 0.3  # Example: More CPU
-                    # tensor_split = [0.7, 0.3]
-
-                # Print minimal GPU info
-                mem_gb = device_info.get('global_mem_size', 0) / (1024**3)
-                console.print(f"[cyan]GPU:[/cyan] [green]{device_info.get('name', 'N/A')} ({mem_gb:.1f} GB)[/green]")
-                
-                # --- CORRECTED SECTION ---
-                # Set n_gpu_layers based on device source and llama compatibility
-                if device_info.get('source').lower() == 'cuda' and device_info.get('llama_compatible', False):
-                    # Use GPU for compatible CUDA devices
-                    assigned_layers = device_info.get('llama_layers_assigned', 0)
-                    console.print(f"[green]GPU Acceleration: {assigned_layers if assigned_layers != 0 else 'All'} layers[/green]")
-                    n_gpu_layers = assigned_layers # This will be -1 for "all" or a specific number
-                else:
-                    console.print("[yellow]Using CPU only[/yellow]")
-                    n_gpu_layers = 0
-                    
+            choice = input("Enter choice (1 or 2): ").strip()
+            if choice == '1':
+                using_gemini = False
+                console.print("Selected: Local Llama Model")
+                break
+            elif choice == '2':
+                using_gemini = True
+                console.print("Selected: Gemini API Model")
+                break
             else:
-                # Handle case where GPU manager init failed or no device found
-                console.print("[yellow]GPU Manager initialization failed or no device found. Using CPU-only mode.[/yellow]")
-                # Set default splits if device info is unavailable (less relevant now)
-                work_split_ratio = 0.0 # No GPU work
-                n_gpu_layers = 0
-
-            # Initialize Llama model with verbose=False to minimize logging
-            # Set environment variable to suppress llama.cpp logs
-            os.environ['LLAMA_CPP_LOG_LEVEL'] = '-1'
-            
-            # Initialize Llama with minimal logging
-            llm = Llama(
-                model_path=MODEL_PATH,
-                n_ctx=system_params['context_limit'],
-                n_threads=system_params['n_threads'], # Use calculated threads
-                n_batch=system_params['n_batch'],     # Use calculated batch size
-                use_mlock=True,                       # Keep True for performance if RAM allows
-                use_mmap=True,                        # Generally good for loading
-                # low_vram=True, # Only enable if truly low VRAM, can impact performance
-                verbose=False,                        # Ensure verbose is False
-                # f16_kv=True, # Keep True if model supports and helps performance/memory
-                seed=42,
-                embedding=False, # Likely False for chat models
-                # rope_scaling={"type": "linear", "factor": 0.25}, # Only if needed for context > trained length
-                n_gpu_layers=n_gpu_layers,            # Use calculated layers
-                # vocab_only=False, # Keep False for generation
-                # main_gpu=0, # Let llama.cpp decide if n_gpu_layers > 0
-                # tensor_split=None, # Usually let llama.cpp handle this based on n_gpu_layers
-                # gpu_memory_utilization=0.8 if n_gpu_layers != 0 else 0.0, # Let llama.cpp manage if possible
-                # logits_all=False, # Keep False unless needed for specific analysis
-                # last_n_tokens_size=64, # Default is usually fine
-                # cache=True # Llama.cpp manages internal caching
-            )
-            
-            # Prewarm the model AFTER successful initialization
-            console.print("[cyan]🔥 Prewarming model...[/cyan]")
-            prewarm_duration = prewarm_model(llm, base_prompt="You are Daya, an AI Security Assistant.")
-            console.print(f"✅ [green] Model prewarmed in {prewarm_duration:.2f} seconds[/green]")
-            
-            # Verify GPU usage without printing detailed logs
-            if n_gpu_layers != 0: # Check if we intended to use GPU layers
-                try:
-                    if torch.cuda.is_available():
-                        # Small delay to allow memory allocation to potentially settle
-                        time.sleep(0.2) 
-                        mem_allocated = torch.cuda.memory_allocated(0) / (1024**2)
-                        console.print(mem_allocated)
-                        # mem_reserved = torch.cuda.memory_reserved(0) / (1024**2) # Reserved is less indicative of active layers
-                        if mem_allocated > 6: # Check if *some* significant memory is allocated
-                            console.print("[green]✅ GPU appears active for inference (memory allocated).[/green]")
-                        else:
-                            console.print("[yellow]⚠️ GPU acceleration intended, but low memory allocated. Check model/driver compatibility.[/yellow]")
-                except Exception as e:
-                    console.print(f"[yellow]Could not verify GPU memory usage: {e}[/yellow]")
-
-        except Exception as e:
-            console.print(f"[red]Error initializing model or GPU manager: {str(e)}[/red]")
-            # Use traceback to get more detail if needed:
-            # import traceback
-            # traceback.print_exc() 
-            if 'gpu_manager' in locals() and gpu_manager is not None and gpu_manager.is_initialized():
-                 gpu_manager.cleanup()
+                console.print("[yellow]Invalid choice. Please enter 1 or 2.[/yellow]")
+        except EOFError:
+            console.print("\n[red]Input aborted. Exiting.[/red]")
             sys.exit(1)
+        except KeyboardInterrupt:
+            console.print("\n[red]Selection interrupted. Exiting.[/red]")
+            sys.exit(1)
+else:
+    console.print("[yellow]GEMINI_API_KEY not set. Defaulting to Local Llama Model.[/yellow]")
+    using_gemini = False
+
+# --- Actual Initialization based on choice ---
+if using_gemini:
+    try:
+        from gemini_client import GeminiClient # Import here
+        console.print("🚀 [bold green]Initializing Gemini Client...[/bold green]")
+        llm = GeminiClient(api_key=GEMINI_API_KEY)
+        console.print(f"✅ [green]Gemini Client initialized with model: {llm.model}[/green]")
+    except ImportError:
+        console.print("[red]Error: Could not import GeminiClient. Make sure gemini_client.py exists and requests is installed.[/red]")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Error initializing Gemini client: {str(e)}[/red]")
+        sys.exit(1)
+else:
+    # --- Llama Initialization Logic ---
+    try:
+        from llama_cpp import Llama # Import Llama here
+        import torch # Import torch here as it's Llama specific
+    except ImportError as e:
+        console.print(f"[red]Error importing Llama/Torch: {e}. Make sure llama-cpp-python and torch are installed.[/red]")
+        sys.exit(1)
+        
+    console.print("[cyan]Initializing Local Llama Model...[/cyan]")
+    # Start stderr suppression before any imports or initialization
+    with suppress_stderr():
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                # Initialize GPU manager with minimal output
+                gpu_manager = GPUManager()
+                gpu_manager.set_suppress_output(True)  # Suppress GPU manager logs
+
+                # Redirect stderr during GPU initialization
+                with open(os.devnull, 'w') as fnull:
+                    with contextlib.redirect_stderr(fnull):
+                        # Initialize GPU manager (can take args like preferred_gpu='nvidia')
+                        gpu_init_success = gpu_manager.initialize()
+
+                device_info = None # Default to None
+                n_gpu_layers = 0   # Default to CPU-only
+
+                if gpu_init_success:
+                    device_info = gpu_manager.get_device_info()
+
+                # Check if device_info is valid before accessing keys
+                if device_info:
+                    power_analysis = is_gpu_powerful(device_info) # power_analysis is defined above
+
+                    # Use appropriate settings based on power analysis (example, adjust as needed)
+                    if power_analysis['is_powerful']:
+                        work_split_ratio = 0.7  # Example: More GPU
+                        # tensor_split = [0.3, 0.7] # tensor_split isn't directly used by Llama constructor here
+                    else:
+                        work_split_ratio = 0.3  # Example: More CPU
+                        # tensor_split = [0.7, 0.3]
+
+                    # Print minimal GPU info
+                    mem_gb = device_info.get('global_mem_size', 0) / (1024**3)
+                    console.print(f"[cyan]GPU:[/cyan] [green]{device_info.get('name', 'N/A')} ({mem_gb:.1f} GB)[/green]")
+
+                    # --- CORRECTED SECTION ---
+                    # Set n_gpu_layers based on device source and llama compatibility
+                    if device_info.get('source').lower() == 'cuda' and device_info.get('llama_compatible', False):
+                        # Use GPU for compatible CUDA devices
+                        assigned_layers = device_info.get('llama_layers_assigned', 0)
+                        console.print(f"[green]GPU Acceleration: {assigned_layers if assigned_layers != 0 else 'All'} layers[/green]")
+                        n_gpu_layers = assigned_layers # This will be -1 for "all" or a specific number
+                    else:
+                        console.print("[yellow]Using CPU only[/yellow]")
+                        n_gpu_layers = 0
+
+                else:
+                    # Handle case where GPU manager init failed or no device found
+                    console.print("[yellow]GPU Manager initialization failed or no device found. Using CPU-only mode.[/yellow]")
+                    # Set default splits if device info is unavailable (less relevant now)
+                    work_split_ratio = 0.0 # No GPU work
+                    n_gpu_layers = 0
+
+                # Verify Model Path before Llama init
+                if not os.path.exists(MODEL_PATH):
+                    console.print(f"\n[bold red]Error:[/bold red] Local model file not found at {MODEL_PATH}")
+                    console.print("[yellow]Please ensure the model file is placed in the correct location or switch to Gemini via USE_GEMINI=1.[/yellow]")
+                    if gpu_manager and gpu_manager.is_initialized():
+                        gpu_manager.cleanup()
+                    sys.exit(1)
+
+
+                # Initialize Llama model with verbose=False to minimize logging
+                # Set environment variable to suppress llama.cpp logs
+                os.environ['LLAMA_CPP_LOG_LEVEL'] = '-1'
+
+                # Initialize Llama with minimal logging
+                llm = Llama(
+                    model_path=MODEL_PATH,
+                    n_ctx=system_params['context_limit'],
+                    n_threads=system_params['n_threads'], # Use calculated threads
+                    n_batch=system_params['n_batch'],     # Use calculated batch size
+                    use_mlock=True,                       # Keep True for performance if RAM allows
+                    use_mmap=True,                        # Generally good for loading
+                    # low_vram=True, # Only enable if truly low VRAM, can impact performance
+                    verbose=False,                        # Ensure verbose is False
+                    # f16_kv=True, # Keep True if model supports and helps performance/memory
+                    seed=42,
+                    embedding=False, # Likely False for chat models
+                    # rope_scaling={"type": "linear", "factor": 0.25}, # Only if needed for context > trained length
+                    n_gpu_layers=n_gpu_layers,            # Use calculated layers
+                    # vocab_only=False, # Keep False for generation
+                    # main_gpu=0, # Let llama.cpp decide if n_gpu_layers > 0
+                    # tensor_split=None, # Usually let llama.cpp handle this based on n_gpu_layers
+                    # gpu_memory_utilization=0.8 if n_gpu_layers != 0 else 0.0, # Let llama.cpp manage if possible
+                    # logits_all=False, # Keep False unless needed for specific analysis
+                    # last_n_tokens_size=64, # Default is usually fine
+                    # cache=True # Llama.cpp manages internal caching
+                )
+                console.print("✅ [green]Local Llama model initialized.[/green]")
+
+                # Prewarm the model AFTER successful initialization
+                console.print("[cyan]🔥 Prewarming model...[/cyan]")
+                prewarm_duration = prewarm_model(llm, base_prompt="You are Daya, an AI Security Assistant.")
+                console.print(f"✅ [green] Model prewarmed in {prewarm_duration:.2f} seconds[/green]")
+
+                # Verify GPU usage without printing detailed logs
+                if n_gpu_layers != 0: # Check if we intended to use GPU layers
+                    try:
+                        if torch.cuda.is_available():
+                            # Small delay to allow memory allocation to potentially settle
+                            time.sleep(0.2)
+                            mem_allocated = torch.cuda.memory_allocated(0) / (1024**2)
+                            # console.print(mem_allocated) # Optional: uncomment for debug
+                            # mem_reserved = torch.cuda.memory_reserved(0) / (1024**2) # Reserved is less indicative of active layers
+                            if mem_allocated > 6: # Check if *some* significant memory is allocated
+                                console.print("[green]✅ GPU appears active for inference (memory allocated).[/green]")
+                            else:
+                                console.print("[yellow]⚠️ GPU acceleration intended, but low memory allocated. Check model/driver compatibility.[/yellow]")
+                    except Exception as e:
+                        console.print(f"[yellow]Could not verify GPU memory usage: {e}[/yellow]")
+
+            except Exception as e:
+                console.print(f"[red]Error initializing model or GPU manager: {str(e)}[/red]")
+                # Use traceback to get more detail if needed:
+                # import traceback
+                # traceback.print_exc()
+                if 'gpu_manager' in locals() and gpu_manager is not None and gpu_manager.is_initialized():
+                     gpu_manager.cleanup()
+                sys.exit(1)
+
+# === End Model Selection Logic ===
 
 # Initialize model cache
 MODEL_CACHE = {}
@@ -565,6 +647,13 @@ system_commands, categorized_commands = discover_system_commands()
 intent_analyzer = IntentAnalyzer(OUTPUT_DIR, system_commands)
 
 # Initialize context optimizers - ensure llm exists if needed, or pass None/handle later
+if llm is None:
+    console.print("[red]Fatal Error: Model (llm) failed to initialize. Exiting.[/red]")
+    # Attempt cleanup even if init failed
+    if not using_gemini and gpu_manager is not None:
+         gpu_manager.cleanup()
+    sys.exit(1)
+
 base_context_optimizer = ContextOptimizer(
     max_tokens= DEFAULT_MAX_TOKENS,
     reserve_tokens= DEFAULT_RESERVE_TOKENS # Assuming reserve_tokens is independent of llm
@@ -577,11 +666,11 @@ context_optimizer = SemanticContextOptimizer(base_optimizer=base_context_optimiz
 response_cleaner = ResponseCleaner()
 
 # Define a function to get responses with optimized caching
-def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, prompt_type='full'):
+def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, prompt_type='basic'):
     """Get response from model with optimized caching and error handling"""
     try:
-        # Use the prompt as is for 'basic' type
-        if prompt_type == 'basic':
+        # Use the prompt as is for 'reason' type
+        if prompt_type == 'reason':
             final_prompt = prompt
         # Use full prompt as default
         else:
@@ -592,25 +681,31 @@ def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, 
         if cache_key in MODEL_CACHE:
             return MODEL_CACHE[cache_key]
 
-        # Check GPU memory before inference
+        # Check GPU memory before inference (only if using Llama and GPU)
         gpu_mem_before = 0
-        if torch.cuda.is_available():
+        if not using_gemini and torch.cuda.is_available():
             try:
                 gpu_mem_before = torch.cuda.memory_allocated(0) / (1024**2)  # in MB
             except:
-                pass                
+                pass
 
         # Generate new response with optimized settings
         try:
-            output = llm(final_prompt, 
+            # >>> ADD DEBUG PRINT HERE <<<
+            #console.print(f"\n[bold yellow]DEBUG: Sending Prompt (first 500 chars):[/bold yellow]\n{final_prompt[:500]}...")
+            #console.print(f"[bold yellow]DEBUG: Total prompt length: {len(final_prompt)} chars, approx tokens: {len(final_prompt)//4}[/bold yellow]") # Rough estimate
+            # >>> END DEBUG PRINT <<<
+
+            # Use the single 'llm' variable which holds either Llama or GeminiClient
+            output = llm(final_prompt,
                         max_tokens=max_tokens,
                         temperature=temperature,
                         stop=["User:", "\nUser:", "USER:"],
-                        echo=False,  # Disable echo for faster response
-                        stream=False)  # Disable streaming for faster response
-            
-            # Check GPU memory after inference to verify GPU usage
-            if torch.cuda.is_available():
+                        echo=False,  # Disable echo for faster response (Gemini ignores this anyway)
+                        stream=False)  # Disable streaming for faster response (Gemini ignores this anyway)
+
+            # Check GPU memory after inference to verify GPU usage (only if using Llama and GPU)
+            if not using_gemini and torch.cuda.is_available():
                 try:
                     gpu_mem_after = torch.cuda.memory_allocated(0) / (1024**2)  # in MB
                     gpu_mem_diff = gpu_mem_after - gpu_mem_before
@@ -728,8 +823,8 @@ def main():
     console.print("✅ [cyan]Daya (Offline Operator Mode) Loaded[/cyan]")
     console.print("\nType 'exit' to quit, or 'clear' to delete chat memory.")
     console.print("[cyan]Available prompt modes:[/cyan]")
-    console.print("• [yellow]basic[/yellow] <command> - Basic mode with minimal context")
-    console.print("• Regular commands use full context by default\n")
+    console.print("• [yellow]reason[/yellow] <command> - Reason mode with max context")
+    console.print("• Regular commands use minimal context by default\n")
     if chat_memory:
         pass
         #console.print(f"💬 Loaded {len(chat_memory)} previous chat messages")
@@ -876,17 +971,17 @@ def main():
             base_prompt = context_optimizer.get_optimized_prompt(
                 chat_memory=chat_memory[-10:],
                 current_task=user_input,
-                base_prompt=PROMPT_TEMPLATE if not user_input.lower().startswith("basic") else None,
+                base_prompt=PROMPT_TEMPLATE if user_input.lower().startswith("reason") else None,
                 reasoning_context=reasoning_result.get("reasoning", {}),
                 follow_up_questions=reasoning_result.get("follow_up_questions", []),
-                tool_context=None if user_input.lower().startswith("basic") else 
+                tool_context=None if not user_input.lower().startswith("reason") else 
                     tool_manager.get_tool_context(reasoning_result.get("tool_name")) if reasoning_result.get("tool_name") else None
             )
             
             # Determine prompt type based on user input
-            prompt_type = 'full'  # default
-            if user_input.lower().startswith("basic"):
-                prompt_type = 'basic'
+            prompt_type = 'basic'  # default
+            if user_input.lower().startswith("reason"):
+                prompt_type = 'reason'
 
             # --- DEBUG START ---
             # print(f"\n{'='*20} DEBUG INFO {'='*20}")
@@ -942,7 +1037,7 @@ def main():
                     console.print(f"⏱️ {total_time:.1f}s")
                     
                     # Display the response with clear formatting
-                    console.print(f"\n[bold magenta]┌──(DAYA ��)[/bold magenta]")
+                    console.print(f"\n[bold magenta]┌──(DAYA)[/bold magenta]")
                     console.print(f"[bold magenta]└─>[/bold magenta] {clean_response}")
                     console.print() # Add an empty line after output for better readability
                     
@@ -1077,8 +1172,8 @@ def main():
 
     # Explicitly clean up resources before exit
     print("Cleaning up resources...")
-    # Clean up llama object first
-    if 'llm' in globals() and llm is not None:
+    # Clean up llama object first (only if it's Llama)
+    if not using_gemini and 'llm' in globals() and llm is not None:
         try:
             print("Releasing Llama model resources...")
             # llama_cpp.Llama doesn't have a close() method, but we can help Python's GC
@@ -1090,9 +1185,9 @@ def main():
         except Exception as e:
             print(f"Error releasing Llama model resources: {e}")
         llm = None # Ensure reference is gone
-    
-    # Clean up GPU manager after Llama
-    if 'gpu_manager' in globals() and gpu_manager is not None:
+
+    # Clean up GPU manager after Llama (only if it was initialized)
+    if not using_gemini and 'gpu_manager' in globals() and gpu_manager is not None:
         try:
             print("Cleaning up GPU Manager...")
             gpu_manager.cleanup()
@@ -1100,6 +1195,10 @@ def main():
         except Exception as e:
             print(f"Error cleaning up GPU Manager: {e}")
         gpu_manager = None # Ensure reference is gone
+    
+    # If using Gemini, llm object (GeminiClient) cleanup is handled by Python's GC
+    if using_gemini:
+        print("Gemini client resources will be released by Python's garbage collector.")
 
     # Optional: Force garbage collection again after explicit cleanup
     import gc
@@ -1107,10 +1206,19 @@ def main():
     print("Cleanup complete.")
 
 def select_device():
-    if torch.cuda.is_available() and is_gpu_available():
-        gpu_memory = get_gpu_memory()
-        if gpu_memory > 2.0:
-            return torch.device("cuda")
+    # This function might be less relevant if Gemini is always used without GPU
+    # Keep it for Llama usage for now
+    # Conditionally import torch needed for this function if Llama was chosen
+    if not using_gemini:
+        try:
+            import torch
+            if torch.cuda.is_available() and is_gpu_available():
+                gpu_memory = get_gpu_memory()
+                if gpu_memory > 2.0:
+                    return torch.device("cuda")
+        except ImportError:
+             # If torch isn't available (e.g., wasn't installed for Llama), default to CPU
+             pass 
     return torch.device("cpu")
 
 if __name__ == "__main__":

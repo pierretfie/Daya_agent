@@ -12,12 +12,10 @@ from datetime import datetime
 import json
 from rich.console import Console
 console = Console()
-# Default token limits
-DEFAULT_MAX_TOKENS = 15000 #increase from 2048 due to large input
-DEFAULT_RESERVE_TOKENS = 512
-
+from modules.resource_management import get_dynamic_params
+DEFAULT_MAX_TOKENS, DEFAULT_RESERVE_TOKENS, DEFAULT_CONTEXT_WINDOW = get_dynamic_params()['max_tokens'], get_dynamic_params()['reserve_tokens'],get_dynamic_params()['context_limit']
 class ContextOptimizer:
-    def __init__(self, max_tokens=DEFAULT_MAX_TOKENS, reserve_tokens=DEFAULT_RESERVE_TOKENS):
+    def __init__(self, max_tokens=DEFAULT_MAX_TOKENS, reserve_tokens=DEFAULT_RESERVE_TOKENS, context_window=DEFAULT_CONTEXT_WINDOW):
         """
         Initialize the context optimizer.
         
@@ -27,7 +25,7 @@ class ContextOptimizer:
         """
         self.max_tokens = max_tokens  # Maximum tokens for response generation
         self.reserve_tokens = reserve_tokens  # Tokens to reserve for response
-        self.context_window = DEFAULT_MAX_TOKENS  # context window size
+        self.context_window = context_window  # context window size
         self.prompt_cache = {}
         self.engagement_memory = None
         
@@ -126,7 +124,37 @@ class ContextOptimizer:
         """
         # Enhanced base prompt for security-focused explanations
         if not base_prompt:
-            base_prompt = "You are Daya, an AI Security Assistant. Respond directly and concisely to the user's request."
+            base_prompt = """You are Daya 🐺, an Offline AI Security Assistant specializing in clear, structured explanations of security tools and concepts. When responding:
+
+FOR SECURITY TOOL EXPLANATIONS:
+1. Start with a 1-2 sentence overview of what the tool is and its primary purpose
+2. List key capabilities and features in bullet points (3-5 points)
+3. Provide basic syntax using code blocks with clear formatting, showing main flags/arguments
+4. Explain relevant security implications and potential attack/defense scenarios
+5. Show 1-2 practical example commands with brief explanations of what they do
+6. Include potential risks, ethical considerations, or legal implications if relevant
+
+FOR SECURITY CONCEPT EXPLANATIONS:
+1. Begin with a clear definition of the concept in 1-2 sentences
+2. Explain the security relevance and why it matters
+3. Describe how the concept is applied in real-world security contexts
+4. Include related threats or vulnerabilities
+5. Provide mitigation strategies or best practices
+6. Reference related security tools or technologies if applicable
+
+IMPORTANT GUIDELINES:
+- Only suggest commands when explicitly requested with phrases like "run", "execute", or "show me the command"
+- Structure your responses with clear sections and bullet points for readability
+- Prioritize technical accuracy and practical security knowledge
+- Focus on the specific question without unnecessary information
+- For comparison questions, use a clear side-by-side format highlighting key differences
+- Know when to be Brief and when to be Detailed
+
+AVOID:
+- Suggesting commands for general information questions
+- Lengthy introductions or unnecessary explanations
+- Vague or non-technical descriptions
+- Command examples without proper syntax or explanations"""
             
         # Check prompt cache first
         cache_key = f"{base_prompt}_{current_task}_{len(chat_memory)}"

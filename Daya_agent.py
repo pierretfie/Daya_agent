@@ -32,8 +32,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DAYA_BASE_DIR = os.path.join(os.path.expanduser("~"), "Daya_Agent_model")
 
 # Construct absolute paths relative to DAYA_BASE_DIR
-#MODEL_PATH = os.path.join(DAYA_BASE_DIR, "mistral.gguf")
-MODEL_PATH = os.path.join(DAYA_BASE_DIR, "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
+MODEL_PATH = os.path.join(DAYA_BASE_DIR, "mistral.gguf")
+#MODEL_PATH = os.path.join(DAYA_BASE_DIR, "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
 OUTPUT_DIR = os.path.join(DAYA_BASE_DIR, "outputs")
 HISTORY_FILE = os.path.join(DAYA_BASE_DIR, "history.json")
 CHAT_HISTORY_FILE = Path(os.path.join(DAYA_BASE_DIR, "daya_history.json"))
@@ -73,12 +73,11 @@ os.makedirs(DAYA_BASE_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Import model parameters from context_optimizer
-from modules.context_optimizer import DEFAULT_MAX_TOKENS, DEFAULT_RESERVE_TOKENS
-
+from modules.context_optimizer import DEFAULT_MAX_TOKENS, DEFAULT_RESERVE_TOKENS, DEFAULT_CONTEXT_WINDOW
 # Model parameters
 RESERVE_TOKENS = DEFAULT_RESERVE_TOKENS
 MAX_TOKENS = DEFAULT_MAX_TOKENS  # Use the same value as context_optimizer
-TEMPERATURE = 0.5  # Reduced from 0.7 for more focused responses
+TEMPERATURE = get_dynamic_params()['temperature']  # Reduced from 0.7 for more focused responses
 # Maximum number of messages to keep in memory
 MEMORY_LIMIT = 20  # Set a reasonable limit for memory usage
 
@@ -488,6 +487,8 @@ else:
 
 # --- Actual Initialization based on choice ---
 if using_gemini:
+    DEFAULT_MAX_TOKENS, DEFAULT_RESERVE_TOKENS = 32000, 512
+    DEFAULT_CONTEXT_WINDOW = DEFAULT_MAX_TOKENS
     try:
         from gemini_client import GeminiClient # Import here
         console.print("🚀 [bold green]Initializing Gemini Client...[/bold green]")
@@ -655,6 +656,7 @@ if llm is None:
     sys.exit(1)
 
 base_context_optimizer = ContextOptimizer(
+    context_window= DEFAULT_CONTEXT_WINDOW,
     max_tokens= DEFAULT_MAX_TOKENS,
     reserve_tokens= DEFAULT_RESERVE_TOKENS # Assuming reserve_tokens is independent of llm
 )
@@ -737,7 +739,7 @@ def confirm_and_run_command(cmd):
 
     console.print(f"\n[bold yellow]Proposed Command:[/bold yellow] [cyan]{cmd}[/cyan]")
     try:
-        confirm = input("Execute this command? (Y/N): ").strip().lower()
+        confirm = input("Execute this command? (Y/N): ").lower()
         if confirm == 'y' or confirm == 'yes':
             console.print(f"[green]Executing command...[/green]")
             output = run_command(cmd) # Use the existing run_command function

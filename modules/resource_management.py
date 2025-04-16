@@ -2,10 +2,10 @@ import os
 import psutil
 from rich.console import Console
 import time
-from modules.context_optimizer import DEFAULT_MAX_TOKENS, DEFAULT_RESERVE_TOKENS
 
 console = Console()
-
+DEFAULT_MAX_TOKENS = 32000 #increase from 2048 due to large input
+DEFAULT_RESERVE_TOKENS = 512
 def get_system_info():
     ram = psutil.virtual_memory()
     swap = psutil.swap_memory()
@@ -24,19 +24,23 @@ def get_dynamic_params():
     if ram_gb >= 32:  # High-end systems
         ram_target_utilization = 0.7  # Reduced from 0.65 for stability
         context_limit = DEFAULT_MAX_TOKENS  # Reduced from 4096
-        n_batch = 512  # Restored original value
+        n_batch = DEFAULT_MAX_TOKENS 
+        reserve_tokens = DEFAULT_RESERVE_TOKENS # Restored original value
     elif ram_gb >= 16:  # Mid-range systems
         ram_target_utilization = 0.7  # Reduced from 0.65
         context_limit = DEFAULT_MAX_TOKENS  # Reduced from 2048
-        n_batch = 512  # Restored original value
+        n_batch = DEFAULT_MAX_TOKENS
+        reserve_tokens = DEFAULT_RESERVE_TOKENS  # Restored original value
     elif ram_gb >= 8:  # Common systems
         ram_target_utilization = 0.7  # Reduced from 0.65
         context_limit = DEFAULT_MAX_TOKENS
-        n_batch = 384  # Restored original value
+        n_batch = 384 
+        reserve_tokens = DEFAULT_RESERVE_TOKENS  # Restored original value
     else:  # Low-memory systems
         ram_target_utilization = 0.6  # Reduced from 0.55
         context_limit = DEFAULT_MAX_TOKENS // 10
         n_batch = 256  # Restored original value
+        reserve_tokens = DEFAULT_RESERVE_TOKENS  # Restored original value
 
     # Ensure we don't exceed available RAM
     memory_limit = int(min(ram_gb * ram_target_utilization, available_ram * 0.7))
@@ -46,9 +50,10 @@ def get_dynamic_params():
     base_config = {
         'n_threads': max(1, min(int(cpu_count * 0.5), 4)),  # Reduced from 0.85, max 4 threads
         'n_batch': n_batch,
-        'max_tokens': DEFAULT_MAX_TOKENS,  # Restored original value
+        'max_tokens': context_limit,  # Restored original value
         'context_limit': context_limit,
         'memory_limit': memory_limit,
+        'reserve_tokens': reserve_tokens,
         'memory_target_gb': memory_target_gb,
         'memory_target_pct': ram_target_utilization * 100,
         'temperature': 0.7,  # Increased for more diverse responses
@@ -75,7 +80,7 @@ def get_dynamic_params():
     }
 
     return base_config
-
+print(get_dynamic_params()['max_tokens']) 
 def optimize_memory_resources():
     """Optimize memory usage with conservative settings"""
     try:

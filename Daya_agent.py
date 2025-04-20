@@ -458,7 +458,7 @@ using_gemini = False # Flag to track which model is used
 # === Model Selection Logic ===
 
 # Prompt user for model choice
-if GEMINI_API_KEY:
+if GEMINI_API_KEY or not GEMINI_API_KEY:
     console.print("Choose a model to use:")
     console.print("1. Local Llama (Requires model file)")
     console.print("2. Gemini API (Requires GEMINI_API_KEY)")

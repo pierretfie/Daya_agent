@@ -32,8 +32,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DAYA_BASE_DIR = os.path.join(os.path.expanduser("~"), "Daya_Agent_model")
 
 # Construct absolute paths relative to DAYA_BASE_DIR
-MODEL_PATH = os.path.join(DAYA_BASE_DIR, "mistral.gguf")
-#MODEL_PATH = os.path.join(DAYA_BASE_DIR, "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
+#MODEL_PATH = os.path.join(DAYA_BASE_DIR, "mistral.gguf")
+MODEL_PATH = os.path.join(DAYA_BASE_DIR, "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
 OUTPUT_DIR = os.path.join(DAYA_BASE_DIR, "outputs")
 HISTORY_FILE = os.path.join(DAYA_BASE_DIR, "history.json")
 CHAT_HISTORY_FILE = Path(os.path.join(DAYA_BASE_DIR, "daya_history.json"))

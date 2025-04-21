@@ -744,24 +744,40 @@ def confirm_and_run_command(cmd):
         if confirm == 'y' or confirm == 'yes':
             console.print(f"[green]Executing command...[/green]")
             output = run_command(cmd) # Use the existing run_command function
-            
-            # Get suggestions from fine-tuning knowledge base
-            if output:
-                suggestions = fine_tuning.suggest_next_steps(cmd, output)
-                if suggestions:
-                    console.print("\n[bold cyan]Suggested next steps:[/bold cyan]")
-                    for suggestion in suggestions:
-                        if suggestion['command']:
-                            console.print(f"[yellow]• {suggestion['purpose']}[/yellow] using [green]{suggestion['command']}[/green] ({suggestion['relevance']})")
-                        else:
-                            console.print(f"[yellow]• {suggestion['purpose']}[/yellow] ({suggestion['relevance']})")
-                    console.print()
+
+            if output is not None:
+                # Get command analysis from reasoning engine
+                try:
+                    analysis_future = executor.submit(reasoning_engine.analyze_command_output, cmd, output)
+                    analysis_result = analysis_future.result(timeout=5)  # Wait up to 5 seconds
+
+                    if analysis_result and isinstance(analysis_result, dict):
+                        # Extract information from the analysis result
+                        description = analysis_result.get("description", "Command executed.")
+                        output_analysis = analysis_result.get("output_analysis", "No output analysis available.")
+                        key_findings = analysis_result.get("key_findings", "No key findings.")
+                        next_steps = analysis_result.get("next_steps", "No next steps suggested.")
+
+                        # Display the analysis in a structured format
+                        console.print("\n[bold cyan]Command Analysis:[/bold cyan]")
+                        console.print(f"[bold]Description:[/bold] {description}")
+                        if output:
+                            console.print(f"[bold]Output Analysis:[/bold] {output_analysis}")
+                        if key_findings:
+                            console.print(f"[bold]Key Findings:[/bold] {key_findings}")
+                        if next_steps:
+                            console.print(f"[bold]Next Steps:[/bold] {next_steps}")
+                        console.print()
+                    else:
+                        console.print("[yellow]No valid analysis received from Reasoning Engine.[/yellow]")
+                except Exception as e:
+                    console.print(f"[yellow]Error during command analysis: {e}[/yellow]")
+
         else:
             console.print("[yellow]Command execution skipped by user.[/yellow]")
-    except EOFError:
-        console.print("\n[yellow]Input stream closed. Command execution skipped.[/yellow]")
-    except Exception as e:
-        console.print(f"[red]Error during command confirmation: {e}. Command execution skipped.[/red]")
+
+    except (EOFError, Exception) as e:  # Combine exceptions for cleaner handling
+        console.print(f"\n[yellow]Command execution issue: {e}. Command execution skipped.[/yellow]")
 
 # === UTILITY FUNCTIONS ===
 

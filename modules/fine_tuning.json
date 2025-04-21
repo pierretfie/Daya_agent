@@ -62,7 +62,7 @@
   {
     "instruction": "What's my public IP address?",
     "input": "",
-    "output": "Command: curl -s ifconfig.me || wget -qO- ifconfig.me\nAnalysis: This fetches the current public IP address from an external service. The output is simply the IP address with no formatting. I should present it clearly as 'Your public IP address is: x.x.x.x'.",
+    "output": "Command: curl -s ifconfig.me || wget -qO- ifconfig.me\nAnalysis: This fetches the current public IP address from an external service. The output is simply the IP address with no formatting. I should run the command and present it clearly as 'Your public IP address is: x.x.x.x'.",
     "category": "System_Info",
     "difficulty": "easy",
     "attack_technique": "N/A",

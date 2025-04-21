@@ -80,7 +80,6 @@ def get_dynamic_params():
     }
 
     return base_config
-print(get_dynamic_params()['max_tokens']) 
 def optimize_memory_resources():
     """Optimize memory usage with conservative settings"""
     try:

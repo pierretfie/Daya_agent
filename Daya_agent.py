@@ -855,6 +855,9 @@ def main():
     # Create a thread pool for background tasks
     executor = ThreadPoolExecutor(max_workers=2)
 
+    # Initialize executor before the command analysis block:
+    executor = ThreadPoolExecutor(max_workers=2)
+
     # Prefetch common prompts to warm up cache
     def prefetch_common_tasks():
         """Prefetch common prompts with better error handling"""

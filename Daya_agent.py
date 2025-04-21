@@ -355,27 +355,6 @@ engagement_memory = {
 # from modules.context_optimizer
 
 # ===============================
-# === Model Setup ===
-console.print("🧠 [bold red]Waking Daya 🐺...[/bold red]")
-
-# Optimize system resources
-success, aggressive_mode = optimize_memory_resources()
-
-# Get system parameters
-system_params = get_dynamic_params()
-
-# Memory usage statistics - using simplified format
-ram, swap, cpu_count, ram_gb = get_system_info()
-console.print(f"[green]⚙️ RAM Tier: {ram_gb:.1f}GB system | Using {int(system_params['memory_target_gb'])}GB | Target: {system_params['memory_target_pct']:.1f}%[/green]")
-console.print(f"[green]📊 Current usage: {ram.used/1024/1024/1024:.1f}GB ({ram.percent:.1f}%) | Context: {system_params['context_limit']} tokens | Batch: {system_params['n_batch']}[/green]")
-
-# Display memory optimization status if used aggressive mode
-if aggressive_mode:
-    console.print("💫 [green]Aggressive memory optimization activated[/green] ")
-
-# Apply CPU optimizations
-success, target_cores, current_load = optimize_cpu_usage()
-console.print(f"[green]⚡ CPU affinity set to use {target_cores} cores based on current load ({current_load:.2f})[/green]  ")
 
 # Ensure mlock is enabled for RAM optimization
 try:
@@ -468,6 +447,28 @@ if GEMINI_API_KEY or not GEMINI_API_KEY:
             if choice == '1':
                 using_gemini = False
                 console.print("Selected: Local Llama Model")
+                # === Model Setup ===
+                console.print("🧠 [bold red]Waking Daya 🐺...[/bold red]")
+
+                # Optimize system resources
+                success, aggressive_mode = optimize_memory_resources()
+
+                # Get system parameters
+                system_params = get_dynamic_params()
+
+                # Memory usage statistics - using simplified format
+                ram, swap, cpu_count, ram_gb = get_system_info()
+                console.print(f"[green]⚙️ RAM Tier: {ram_gb:.1f}GB system | Using {int(system_params['memory_target_gb'])}GB | Target: {system_params['memory_target_pct']:.1f}%[/green]")
+                console.print(f"[green]📊 Current usage: {ram.used/1024/1024/1024:.1f}GB ({ram.percent:.1f}%) | Context: {system_params['context_limit']} tokens | Batch: {system_params['n_batch']}[/green]")
+
+                # Display memory optimization status if used aggressive mode
+                if aggressive_mode:
+                    console.print("💫 [green]Aggressive memory optimization activated[/green] ")
+
+                # Apply CPU optimizations
+                success, target_cores, current_load = optimize_cpu_usage()
+                console.print(f"[green]⚡ CPU affinity set to use {target_cores} cores based on current load ({current_load:.2f})[/green]  ")
+
                 break
             elif choice == '2':
                 using_gemini = True

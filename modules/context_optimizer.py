@@ -7,6 +7,7 @@ messages, handling token limits, and improving prompt quality.
 """
 
 import re
+import os
 import psutil
 from datetime import datetime
 import json
@@ -14,6 +15,9 @@ from rich.console import Console
 console = Console()
 from modules.resource_management import get_dynamic_params
 DEFAULT_MAX_TOKENS, DEFAULT_RESERVE_TOKENS, DEFAULT_CONTEXT_WINDOW = get_dynamic_params()['max_tokens'], get_dynamic_params()['reserve_tokens'],get_dynamic_params()['context_limit']
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROMPT_TEMPLATE_FILE = os.path.join(SCRIPT_DIR, "modules", "basic_prompt_template.txt")
+
 class ContextOptimizer:
     def __init__(self, max_tokens=DEFAULT_MAX_TOKENS, reserve_tokens=DEFAULT_RESERVE_TOKENS, context_window=DEFAULT_CONTEXT_WINDOW):
         """
@@ -124,30 +128,7 @@ class ContextOptimizer:
         """
         # Enhanced base prompt for security-focused explanations
         if not base_prompt:
-            base_prompt = """You are Daya 🐺, an Offline AI Security Assistant providing concise explanations of security tools and concepts.
-
-Tool Explanations:
-- Briefly describe the tool and its main purpose.
-- List 3-5 key features or capabilities.
-- Show basic syntax with common options (code block).
-- Explain security implications (attack/defense).
-- Give 1-2 example commands with short explanations.
-- Mention risks or ethical concerns if applicable.
-
-Concept Explanations:
-- Define the concept in 1-2 sentences.
-- Explain its security relevance.
-- Describe real-world applications.
-- Include related threats or vulnerabilities.
-- Suggest mitigation or best practices.
-- Reference relevant tools or technologies.
-
-- Do not suggest commands unless asked for with phrases like "run", "execute", or "show me the command".
-- Keep responses concise and focused on the question. Use bullet points and code blocks for clarity.
-- Prioritize technical accuracy and practical security knowledge.
-- Be brief or detailed as needed, focusing on actionable information.
-"""
-            
+            base_prompt = PROMPT_TEMPLATE_FILE    
         # Check prompt cache first
         cache_key = f"{base_prompt}_{current_task}_{len(chat_memory)}"
         if cache_key in self.prompt_cache:

@@ -40,7 +40,7 @@ CHAT_HISTORY_FILE = Path(os.path.join(DAYA_BASE_DIR, "daya_history.json"))
 COMMAND_HISTORY_FILE = os.path.join(DAYA_BASE_DIR, "command_history")
 
 # Construct absolute paths to scripts (in the same directory as Daya_agent.py)
-PROMPT_TEMPLATE_FILE = os.path.join(SCRIPT_DIR, "modules", "prompt_template.txt")
+PROMPT_TEMPLATE_FILE = os.path.join(SCRIPT_DIR, "modules", "reason_prompt_template.txt")
 FINE_TUNING_FILE = os.path.join(SCRIPT_DIR, "modules", "fine_tuning.json")
 
 # Add the script directory to the Python path
@@ -647,6 +647,7 @@ system_commands, categorized_commands = discover_system_commands()
 
 # Initialize intent analyzer
 intent_analyzer = IntentAnalyzer(OUTPUT_DIR, system_commands)
+tool_manager = ToolManager(fine_tuning_file=FINE_TUNING_FILE)
 
 # Initialize context optimizers - ensure llm exists if needed, or pass None/handle later
 if llm is None:
@@ -698,12 +699,11 @@ def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, 
             #console.print(f"\n[bold yellow]DEBUG: Sending Prompt (first 500 chars):[/bold yellow]\n{final_prompt[:500]}...")
             #console.print(f"[bold yellow]DEBUG: Total prompt length: {len(final_prompt)} chars, approx tokens: {len(final_prompt)//4}[/bold yellow]") # Rough estimate
             # >>> END DEBUG PRINT <<<
-
             # Use the single 'llm' variable which holds either Llama or GeminiClient
             output = llm(final_prompt,
                         max_tokens=max_tokens,
                         temperature=temperature,
-                        stop=["User:", "\nUser:", "USER:"],
+                        #stop=["User:", "\nUser:", "USER:"],
                         echo=False,  # Disable echo for faster response (Gemini ignores this anyway)
                         stream=False)  # Disable streaming for faster response (Gemini ignores this anyway)
 
@@ -731,6 +731,13 @@ def get_cached_response(prompt, max_tokens=MAX_TOKENS, temperature=TEMPERATURE, 
         console.print(f"[yellow]Error: {str(e)}[/yellow]")
         return {"choices": [{"text": "I apologize, but I encountered an error processing your request."}]}
 
+# Import threading capabilities
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
+# Global executor for background tasks
+executor = ThreadPoolExecutor(max_workers=2)
+
 # Helper function for command confirmation and execution
 def confirm_and_run_command(cmd):
     """Displays the command and asks for user confirmation before running."""
@@ -746,32 +753,91 @@ def confirm_and_run_command(cmd):
             output = run_command(cmd) # Use the existing run_command function
 
             if output is not None:
+    # Normalize output if it's a tuple, e.g., (stdout, stderr)
+                if isinstance(output, tuple):
+                    output = output[0] if output[0] else output[1]  # Prefer stdout if available
+
                 # Get command analysis from reasoning engine
                 try:
-                    analysis_future = executor.submit(reasoning_engine.analyze_command_output, cmd, output)
+                    intent_analysis = intent_analyzer.analyze(output)
+                    analysis_future = executor.submit(reasoning_engine.analyze_task, cmd, intent_analysis)
                     analysis_result = analysis_future.result(timeout=5)  # Wait up to 5 seconds
+
+                    # Optional: print raw result for debugging
+                    #print("Raw analysis_result:", analysis_result)
+
+                    # Handle tuple responses defensively
+                    if isinstance(analysis_result, tuple):
+                        analysis_result = analysis_result[0] if len(analysis_result) > 0 else {}
 
                     if analysis_result and isinstance(analysis_result, dict):
                         # Extract information from the analysis result
                         description = analysis_result.get("description", "Command executed.")
-                        output_analysis = analysis_result.get("output_analysis", "No output analysis available.")
-                        key_findings = analysis_result.get("key_findings", "No key findings.")
-                        next_steps = analysis_result.get("next_steps", "No next steps suggested.")
+                    
 
-                        # Display the analysis in a structured format
-                        console.print("\n[bold cyan]Command Analysis:[/bold cyan]")
                         console.print(f"[bold]Description:[/bold] {description}")
-                        if output:
-                            console.print(f"[bold]Output Analysis:[/bold] {output_analysis}")
-                        if key_findings:
-                            console.print(f"[bold]Key Findings:[/bold] {key_findings}")
-                        if next_steps:
-                            console.print(f"[bold]Next Steps:[/bold] {next_steps}")
+                      
                         console.print()
+                        analysis_prompt = context_optimizer.get_optimized_prompt(
+                        chat_memory= chat_memory[-0:],
+                        current_task=f'output:{output}',
+                        base_prompt= None,
+                        reasoning_context=analysis_result.get("reasoning", {}),
+                        follow_up_questions=analysis_result.get("follow_up_questions", []),
+                        tool_context=None)
+                        with Progress(
+                            SpinnerColumn(spinner_name="dots"),
+                            TextColumn("[progress.description]{task.description}"),
+                            transient=True,
+                        ) as progress:
+                            start_time = time.time()
+                            task_id = progress.add_task("🐺 Reasoning...", total=None)
+                            
+                            # Update the timer every 0.1 seconds
+                            timer_running = True
+                            def update_timer():
+                                while timer_running:
+                                    elapsed = time.time() - start_time
+                                    progress.update(task_id, description=f"🐺 Reasoning... [{elapsed:.1f}s]")
+                                    time.sleep(0.1)
+                            
+                            # Start the timer update thread
+                            timer_thread = threading.Thread(target=update_timer)
+                            timer_thread.daemon = True
+                            timer_thread.start()
+
+                        # Generate response using cached response function for better performance
+                        
+                            output = get_cached_response(analysis_prompt, prompt_type=None)
+                            response = output['choices'][0]['text'].strip()
+                            # Clean the response using the response cleaner
+                            cleaned_result = response_cleaner.clean_response(response)
+                            clean_response = response_cleaner.format_for_display(cleaned_result)
+                            
+                            
+                            # Ensure we have content to display
+                            if not clean_response:
+                                clean_response = "I apologize, but I encountered an issue generating a response. Please try rephrasing your question."
+                            
+                            # Stop the timer thread and progress spinner before displaying response
+                            timer_running = False
+                            timer_thread.join(timeout=0.2)  # Wait for thread to finish
+                            progress.stop()
+                            
+                            # Display total elapsed time
+                            total_time = time.time() - start_time
+                            console.print(f"⏱️ {total_time:.1f}s")
+                            
+                            # Display the response with clear formatting
+                            console.print(f"\n[bold magenta]┌──(DAYA)[/bold magenta]")
+                            console.print(f"[bold magenta]└─>[/bold magenta] {clean_response}")
+                            console.print() # Add an empty line after output for better readability
+                        execute_cmd(intent_analysis,cleaned_result)
                     else:
                         console.print("[yellow]No valid analysis received from Reasoning Engine.[/yellow]")
                 except Exception as e:
                     console.print(f"[yellow]Error during command analysis: {e}[/yellow]")
+
 
         else:
             console.print("[yellow]Command execution skipped by user.[/yellow]")
@@ -779,6 +845,76 @@ def confirm_and_run_command(cmd):
     except (EOFError, Exception) as e:  # Combine exceptions for cleaner handling
         console.print(f"\n[yellow]Command execution issue: {e}. Command execution skipped.[/yellow]")
 
+
+def execute_cmd(intent_analysis,cleaned_result):
+    executed_command_this_turn = False # Flag to avoid double execution
+    cmd = intent_analysis["command"]
+    extracted_commands = cleaned_result.get('commands', [])
+    command_to_execute = extracted_commands[0] if extracted_commands else None            
+
+    if intent_analysis and intent_analysis.get("command") and intent_analysis.get("should_execute", False):
+        # Execute command from intent analysis (with confirmation)
+        
+        
+        # Check if it's a help request (don't need confirmation for help)
+        if cmd.lower().startswith(('help', 'man')):
+            tool_name = cmd.split()[-1]
+            if tool_name in system_commands:
+                tool_help = tool_manager.get_tool_help(tool_name)
+                if tool_help:
+                    console.print(f"\n[bold cyan]Help for {tool_name}:[/bold cyan]")
+                    if tool_help.get("source") == "man_page":
+                        console.print(f"[bold]Name:[/bold] {tool_help.get('name', 'N/A')}")
+                        console.print(f"[bold]Synopsis:[/bold] {tool_help.get('synopsis', 'N/A')}")
+                        console.print(f"[bold]Description:[/bold] {tool_help.get('description', 'N/A')}")
+                        if tool_help.get('options'):
+                            console.print(f"[bold]Options:[/bold] {tool_help['options']}")
+                        if tool_help.get('examples'):
+                            console.print(f"[bold]Examples:[/bold] {tool_help['examples']}")
+                    else:
+                        console.print(tool_help.get('help_text', 'No help text found.'))
+                else:
+                    console.print(f"[yellow]No help information available for {tool_name}[/yellow]")
+                executed_command_this_turn = True # Treat help display as handled
+            else:
+                # If help is for an unknown command, ask to run it
+                confirm_and_run_command(cmd)
+                executed_command_this_turn = True
+        else:
+            # Ask for confirmation for non-help commands
+            confirm_and_run_command(cmd)
+            executed_command_this_turn = True
+
+    elif command_to_execute and not executed_command_this_turn:
+        # Execute command from response (with confirmation)
+        cmd = command_to_execute
+        
+        # Check if it's a help request (don't need confirmation)
+        if cmd.lower().startswith(('help', 'man')):
+            tool_name = cmd.split()[-1]
+            if tool_name in system_commands:
+                tool_help = tool_manager.get_tool_help(tool_name)
+                if tool_help:
+                    console.print(f"\n[bold cyan]Help for {tool_name}:[/bold cyan]")
+                    if tool_help.get("source") == "man_page":
+                        console.print(f"[bold]Name:[/bold] {tool_help.get('name', 'N/A')}")
+                        console.print(f"[bold]Synopsis:[/bold] {tool_help.get('synopsis', 'N/A')}")
+                        console.print(f"[bold]Description:[/bold] {tool_help.get('description', 'N/A')}")
+                        if tool_help.get('options'):
+                            console.print(f"[bold]Options:[/bold] {tool_help['options']}")
+                        if tool_help.get('examples'):
+                            console.print(f"[bold]Examples:[/bold] {tool_help['examples']}")
+                    else:
+                        console.print(tool_help.get('help_text', 'No help text found.'))
+                else:
+                    console.print(f"[yellow]No help information available for {tool_name}[/yellow]")
+                executed_command_this_turn = True
+            else:
+                # If help is for an unknown command, ask to run it
+                confirm_and_run_command(cmd)
+        else:
+            # Ask for confirmation for non-help commands
+            confirm_and_run_command(cmd)
 # === UTILITY FUNCTIONS ===
 
 # Note: The following functions have been moved to modules.engagement_manager
@@ -903,7 +1039,6 @@ def main():
         console.print(f"[yellow]Failed to start prefetch: {str(e)}[/yellow]")
 
     # Initialize tool manager after other initializations
-    tool_manager = ToolManager(fine_tuning_file=FINE_TUNING_FILE)
 
     while True:
         try:
@@ -962,7 +1097,7 @@ def main():
 
             # NEW: Analyze intent first (this is faster)
             intent_analysis = intent_analyzer.analyze(user_input)
-
+            
             # Get attack plan result if ready, otherwise continue without waiting
             try:
                 attack_plan = attack_plan_future.result(timeout=0.1)  # Short timeout
@@ -976,10 +1111,9 @@ def main():
             try:
                 # Pass the result of intent analysis to the reasoning engine
                 reasoning_future = executor.submit(reasoning_engine.analyze_task, user_input, intent_analysis=intent_analysis)
-
                 # Get reasoning result with timeout and better error handling
                 try:
-                    reasoning_result = reasoning_future.result(timeout=0.5)  # Short timeout to avoid blocking
+                    reasoning_result = reasoning_future.result(timeout=2)  # Short timeout to avoid blocking
                 except Exception as e:
                     console.print(f"[yellow]Reasoning timeout or error: {str(e)}[/yellow]")
                     reasoning_result = {"reasoning": {}, "follow_up_questions": []}
@@ -988,7 +1122,6 @@ def main():
             except Exception as e:
                 console.print(f"[yellow]Failed to start reasoning: {str(e)}[/yellow]")
                 reasoning_result = {"reasoning": {}, "follow_up_questions": []}
-
             # Generate base prompt
             base_prompt = context_optimizer.get_optimized_prompt(
                 chat_memory=chat_memory[-10:],
@@ -1042,8 +1175,6 @@ def main():
                     cleaned_result = response_cleaner.clean_response(response)
                     clean_response = response_cleaner.format_for_display(cleaned_result)
                     
-                    # Extract commands from the response if any
-                    extracted_commands = cleaned_result.get('commands', [])
                     
                     # Ensure we have content to display
                     if not clean_response:
@@ -1068,75 +1199,11 @@ def main():
                     console.print("[yellow]Please try rephrasing your question.[/yellow]")
 
                 # Process any commands extracted by the response cleaner
-                extracted_commands = cleaned_result.get('commands', [])
-                command_to_execute = extracted_commands[0] if extracted_commands else None
                 
-                executed_command_this_turn = False # Flag to avoid double execution
-
-                if intent_analysis and intent_analysis.get("command") and intent_analysis.get("should_execute", False):
-                    # Execute command from intent analysis (with confirmation)
-                    cmd = intent_analysis["command"]
-                    
-                    # Check if it's a help request (don't need confirmation for help)
-                    if cmd.lower().startswith(('help', 'man')):
-                        tool_name = cmd.split()[-1]
-                        if tool_name in system_commands:
-                            tool_help = tool_manager.get_tool_help(tool_name)
-                            if tool_help:
-                                console.print(f"\n[bold cyan]Help for {tool_name}:[/bold cyan]")
-                                if tool_help.get("source") == "man_page":
-                                    console.print(f"[bold]Name:[/bold] {tool_help.get('name', 'N/A')}")
-                                    console.print(f"[bold]Synopsis:[/bold] {tool_help.get('synopsis', 'N/A')}")
-                                    console.print(f"[bold]Description:[/bold] {tool_help.get('description', 'N/A')}")
-                                    if tool_help.get('options'):
-                                        console.print(f"[bold]Options:[/bold] {tool_help['options']}")
-                                    if tool_help.get('examples'):
-                                        console.print(f"[bold]Examples:[/bold] {tool_help['examples']}")
-                                else:
-                                    console.print(tool_help.get('help_text', 'No help text found.'))
-                            else:
-                                console.print(f"[yellow]No help information available for {tool_name}[/yellow]")
-                            executed_command_this_turn = True # Treat help display as handled
-                        else:
-                            # If help is for an unknown command, ask to run it
-                            confirm_and_run_command(cmd)
-                            executed_command_this_turn = True
-                    else:
-                        # Ask for confirmation for non-help commands
-                        confirm_and_run_command(cmd)
-                        executed_command_this_turn = True
-
-                elif command_to_execute and not executed_command_this_turn:
-                    # Execute command from response (with confirmation)
-                    cmd = command_to_execute
-                    
-                    # Check if it's a help request (don't need confirmation)
-                    if cmd.lower().startswith(('help', 'man')):
-                        tool_name = cmd.split()[-1]
-                        if tool_name in system_commands:
-                            tool_help = tool_manager.get_tool_help(tool_name)
-                            if tool_help:
-                                console.print(f"\n[bold cyan]Help for {tool_name}:[/bold cyan]")
-                                if tool_help.get("source") == "man_page":
-                                    console.print(f"[bold]Name:[/bold] {tool_help.get('name', 'N/A')}")
-                                    console.print(f"[bold]Synopsis:[/bold] {tool_help.get('synopsis', 'N/A')}")
-                                    console.print(f"[bold]Description:[/bold] {tool_help.get('description', 'N/A')}")
-                                    if tool_help.get('options'):
-                                        console.print(f"[bold]Options:[/bold] {tool_help['options']}")
-                                    if tool_help.get('examples'):
-                                        console.print(f"[bold]Examples:[/bold] {tool_help['examples']}")
-                                else:
-                                    console.print(tool_help.get('help_text', 'No help text found.'))
-                            else:
-                                console.print(f"[yellow]No help information available for {tool_name}[/yellow]")
-                            executed_command_this_turn = True
-                        else:
-                            # If help is for an unknown command, ask to run it
-                            confirm_and_run_command(cmd)
-                    else:
-                        # Ask for confirmation for non-help commands
-                        confirm_and_run_command(cmd)
+                execute_cmd(intent_analysis,cleaned_result)
+               
                 
+                    
                 # Save the response to chat memory immediately to ensure conversation continuity
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 chat_memory.append({

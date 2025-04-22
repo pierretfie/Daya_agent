@@ -8,7 +8,8 @@ import re
 import shlex
 import os
 import json
-from .engagement_manager import engagement_memory
+from modules.engagement_manager import engagement_memory
+
 import random
 from typing import Dict, Any
 

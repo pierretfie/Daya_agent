@@ -120,12 +120,7 @@ class CommandProcessor:
         target_match = re.search(r'(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?', command)
         target = target_match.group(0) if target_match else "unknown target"
         
-        # Check for potentially harmful commands
-        if any(word in command for word in ["exploit", "hack", "attack", "penetrate"]):
-            result["output"] = f"⚠️ Security Alert: This command appears to be attempting to exploit {target}. Such actions may be illegal and unethical. Please confirm if you have proper authorization to perform this action."
-            result["suggested_follow_up"] = "Would you like to learn about legal and ethical security testing practices?"
-            return result
-        
+       
         # For non-exploitative security commands
         result["output"] = f"Security analysis requested for {target}. Please confirm if you have proper authorization to perform this action."
         result["suggested_follow_up"] = "Would you like to know more about security best practices?"

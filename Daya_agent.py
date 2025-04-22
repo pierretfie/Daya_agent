@@ -813,7 +813,7 @@ def confirm_and_run_command(cmd):
                             # Clean the response using the response cleaner
                             cleaned_result = response_cleaner.clean_response(response)
                             clean_response = response_cleaner.format_for_display(cleaned_result)
-                            
+                           
                             
                             # Ensure we have content to display
                             if not clean_response:
@@ -851,7 +851,7 @@ def execute_cmd(intent_analysis,cleaned_result):
     cmd = intent_analysis["command"]
     extracted_commands = cleaned_result.get('commands', [])
     command_to_execute = extracted_commands[0] if extracted_commands else None            
-
+    print(cmd, extracted_commands)
     if intent_analysis and intent_analysis.get("command") and intent_analysis.get("should_execute", False):
         # Execute command from intent analysis (with confirmation)
         

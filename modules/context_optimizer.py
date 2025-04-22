@@ -128,7 +128,8 @@ class ContextOptimizer:
         """
         # Enhanced base prompt for security-focused explanations
         if not base_prompt:
-            base_prompt = PROMPT_TEMPLATE_FILE    
+            base_prompt = PROMPT_TEMPLATE_FILE
+            
         # Check prompt cache first
         cache_key = f"{base_prompt}_{current_task}_{len(chat_memory)}"
         if cache_key in self.prompt_cache:

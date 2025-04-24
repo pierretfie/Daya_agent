@@ -95,8 +95,31 @@ class ResponseCleaner:
             re.compile(r'^\s*(Understanding|Analysis|Approach|Response):.*$', re.MULTILINE)
         ]
         
-    def clean_response(self, response):
-        """Clean up the response text and extract components"""
+    def _select_best_command(self, commands: list, user_intent: str = None) -> str:
+        """
+        Select the best command from a list using heuristics:
+        - Prefer commands without unresolved placeholders
+        - Prefer commands with more arguments (more specific)
+        - Optionally, rank by similarity to user intent if provided
+        """
+        # Remove commands with unresolved placeholders
+        filtered = [cmd for cmd in commands if '<' not in cmd and '>' not in cmd]
+        if not filtered:
+            filtered = commands  # fallback if all have placeholders
+
+        # Prefer longer (more specific) commands
+        filtered = sorted(filtered, key=lambda x: len(x.split()), reverse=True)
+
+        # Optionally, rank by similarity to user intent
+        if user_intent:
+            def similarity(cmd):
+                return len(set(cmd.lower().split()) & set(user_intent.lower().split()))
+            filtered = sorted(filtered, key=similarity, reverse=True)
+
+        return filtered[0] if filtered else None
+
+    def clean_response(self, response, user_intent=None):
+        """Clean up the response text and extract components. Now with improved command selection."""
         if not response or response.strip() == "":
             return {
                 "text": "I apologize, but I couldn't generate a proper response. Please try rephrasing your question.",
@@ -227,9 +250,11 @@ class ResponseCleaner:
         for pattern in self.instruction_patterns:
             cleaned_text = pattern.sub('', cleaned_text)
             
+        # Improved command selection logic
+        best_command = self._select_best_command(command_result["commands"], user_intent)
         result = {
             "text": cleaned_text,
-            "commands": command_result["commands"],
+            "commands": [best_command] if best_command else [],
             "codeblocks": code_result["codeblocks"],
             "placeholders": normalized["placeholders"]
         }

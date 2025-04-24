@@ -1,0 +1,81 @@
+{
+  "tool_name": "nmap",
+  "documentation": {
+    "quick_overview": "Nmap (\u201cNetwork Mapper\u201d) is an open source tool for network exploration and security auditing",
+    "key_features": [
+      "It was designed to rapidly scan large networks, although it works",
+      "The output from Nmap is a list of scanned targets, with supplemental information on each depending on the options used",
+      "Filtered means that a firewall, filter, or other",
+      "Ports are classified as unfiltered when they are responsive to Nmap's probes, but Nmap cannot determine whether they are open or",
+      "Nmap reports the state combinations open|filtered and closed|filtered when it cannot determine which of the two states describe a port",
+      "When an IP protocol scan is requested (-sO), Nmap provides information on",
+      "In addition to the interesting ports table, Nmap can provide further information on targets, including reverse DNS names, operating system guesses, device",
+      "A typical Nmap scan is shown in Example 1",
+      "The only Nmap arguments used in this example are -A, to enable OS and version detection, script scanning, and",
+      "A representative Nmap scan",
+      "14 ((Ubuntu))"
+    ],
+    "common_usage": [
+      "nmap [Scan Type...] [Options] {target specification}"
+    ],
+    "important_flags": {},
+    "security_notes": [
+      "nmap - Network exploration tool and security / port scanner",
+      "Nmap (\u201cNetwork Mapper\u201d) is an open source tool for network exploration and security auditing.",
+      "However, because script scanning with the default set is considered intrusive, you should not use -A against target networks",
+      "Use the --unprivileged option"
+    ],
+    "examples_explained": []
+  },
+  "verification": {
+    "sources_checked": [
+      "man_pages",
+      "official_docs",
+      "security_advisories",
+      "community_sources"
+    ],
+    "matches": [
+      {
+        "source": "security_advisories",
+        "details": {
+          "matches": [
+            "https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=nmap"
+          ],
+          "discrepancies": []
+        }
+      },
+      {
+        "source": "community_sources",
+        "details": {
+          "matches": [
+            "https://github.com/search?q=nmap&type=repositories",
+            "https://www.reddit.com/search/?q=nmap"
+          ],
+          "discrepancies": [
+            "https://stackoverflow.com/search?q=nmap"
+          ]
+        }
+      }
+    ],
+    "discrepancies": [
+      {
+        "source": "man_pages",
+        "details": {
+          "matches": [],
+          "discrepancies": []
+        }
+      },
+      {
+        "source": "official_docs",
+        "details": {
+          "matches": [],
+          "discrepancies": [],
+          "source_url": "https://nmap.org/book/man.html"
+        }
+      }
+    ],
+    "confidence_score": 0.5,
+    "last_verified": "2025-04-22T15:25:33.977724"
+  },
+  "last_updated": "2025-04-22T15:26:12.931523"
+}

@@ -15,6 +15,7 @@ from .reasoning_engine import ReasoningEngine
 from .gpu_manager import GPUManager, is_gpu_available, get_gpu_memory
 from .history_manager import setup_command_history, save_command_history, get_input_with_history, load_chat_history, save_chat_history
 from .resource_management import get_system_info, get_dynamic_params, optimize_memory_resources, optimize_cpu_usage, prewarm_model
+from .command_executor import execute_cmd, confirm_and_run_command, terminal_command_selection
 
 __all__ = [
     'ToolManager',
@@ -40,5 +41,8 @@ __all__ = [
     'get_dynamic_params',
     'optimize_memory_resources',
     'optimize_cpu_usage',
-    'prewarm_model'
+    'prewarm_model',
+    'execute_cmd',
+    'confirm_and_run_command',
+    'terminal_command_selection'
 ] 

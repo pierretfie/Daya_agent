@@ -59,6 +59,7 @@ from modules.engagement_manager import extract_targets, suggest_attack_plan, eng
 from modules.reasoning_engine import ReasoningEngine
 from modules.tool_manager import ToolManager
 from modules.gpu_manager import GPUManager, is_gpu_available, get_gpu_memory
+from modules import execute_cmd
 
 # Conditionally import Llama-specific things if needed
 # if not USE_GEMINI: # <-- REMOVE THIS BLOCK
@@ -832,7 +833,7 @@ def confirm_and_run_command(cmd):
                             console.print(f"\n[bold magenta]┌──(DAYA)[/bold magenta]")
                             console.print(f"[bold magenta]└─>[/bold magenta] {clean_response}")
                             console.print() # Add an empty line after output for better readability
-                        execute_cmd(intent_analysis,cleaned_result)
+                        execute_cmd(intent_analysis,cleaned_result, system_commands, tool_manager)
                     else:
                         console.print("[yellow]No valid analysis received from Reasoning Engine.[/yellow]")
                 except Exception as e:
@@ -846,75 +847,131 @@ def confirm_and_run_command(cmd):
         console.print(f"\n[yellow]Command execution issue: {e}. Command execution skipped.[/yellow]")
 
 
-def execute_cmd(intent_analysis,cleaned_result):
+def execute_cmd(intent_analysis, cleaned_result, system_commands, tool_manager):
     executed_command_this_turn = False # Flag to avoid double execution
-    cmd = intent_analysis["command"]
+    # Prefer best cleaned command, fallback to intent_analysis["command"]
     extracted_commands = cleaned_result.get('commands', [])
-    command_to_execute = extracted_commands[0] if extracted_commands else None            
-    print(cmd, extracted_commands)
-    if intent_analysis and intent_analysis.get("command") and intent_analysis.get("should_execute", False):
-        # Execute command from intent analysis (with confirmation)
-        
-        
-        # Check if it's a help request (don't need confirmation for help)
-        if cmd.lower().startswith(('help', 'man')):
-            tool_name = cmd.split()[-1]
-            if tool_name in system_commands:
-                tool_help = tool_manager.get_tool_help(tool_name)
-                if tool_help:
-                    console.print(f"\n[bold cyan]Help for {tool_name}:[/bold cyan]")
-                    if tool_help.get("source") == "man_page":
-                        console.print(f"[bold]Name:[/bold] {tool_help.get('name', 'N/A')}")
-                        console.print(f"[bold]Synopsis:[/bold] {tool_help.get('synopsis', 'N/A')}")
-                        console.print(f"[bold]Description:[/bold] {tool_help.get('description', 'N/A')}")
-                        if tool_help.get('options'):
-                            console.print(f"[bold]Options:[/bold] {tool_help['options']}")
-                        if tool_help.get('examples'):
-                            console.print(f"[bold]Examples:[/bold] {tool_help['examples']}")
-                    else:
-                        console.print(tool_help.get('help_text', 'No help text found.'))
+    # Helper: is a command incomplete or just a tool name?
+    def is_incomplete(cmd):
+        if not cmd:
+            return True
+        cmd = cmd.strip()
+        # Only tool name (e.g., 'nmap') or contains unresolved placeholders
+        return (
+            len(cmd.split()) == 1 or
+            '<' in cmd or '>' in cmd
+        )
+    # Choose the best command to execute
+    if extracted_commands and not is_incomplete(extracted_commands[0]):
+        cmd = extracted_commands[0]
+    elif intent_analysis.get("command") and not is_incomplete(intent_analysis["command"]):
+        cmd = intent_analysis["command"]
+    else:
+        cmd = None
+    print(f"Selected command for execution: {cmd}")
+    if cmd is None:
+        console.print("[yellow]No valid command to execute (all were incomplete or had placeholders). Skipping execution.[/yellow]")
+        return
+    # Check if it's a help request (don't need confirmation for help)
+    if cmd.lower().startswith(('help', 'man')):
+        tool_name = cmd.split()[-1]
+        if tool_name in system_commands:
+            tool_help = tool_manager.get_tool_help(tool_name)
+            if tool_help:
+                console.print(f"\n[bold cyan]Help for {tool_name}:[/bold cyan]")
+                if tool_help.get("source") == "man_page":
+                    console.print(f"[bold]Name:[/bold] {tool_help.get('name', 'N/A')}")
+                    console.print(f"[bold]Synopsis:[/bold] {tool_help.get('synopsis', 'N/A')}")
+                    console.print(f"[bold]Description:[/bold] {tool_help.get('description', 'N/A')}")
+                    if tool_help.get('options'):
+                        console.print(f"[bold]Options:[/bold] {tool_help['options']}")
+                    if tool_help.get('examples'):
+                        console.print(f"[bold]Examples:[/bold] {tool_help['examples']}")
                 else:
-                    console.print(f"[yellow]No help information available for {tool_name}[/yellow]")
-                executed_command_this_turn = True # Treat help display as handled
+                    console.print(tool_help.get('help_text', 'No help text found.'))
             else:
-                # If help is for an unknown command, ask to run it
-                confirm_and_run_command(cmd)
-                executed_command_this_turn = True
+                console.print(f"[yellow]No help information available for {tool_name}[/yellow]")
+            return
         else:
-            # Ask for confirmation for non-help commands
+            # If help is for an unknown command, ask to run it
             confirm_and_run_command(cmd)
-            executed_command_this_turn = True
+            return
+    # For all other commands, ask for confirmation
+    confirm_and_run_command(cmd)
 
-    elif command_to_execute and not executed_command_this_turn:
-        # Execute command from response (with confirmation)
-        cmd = command_to_execute
-        
-        # Check if it's a help request (don't need confirmation)
-        if cmd.lower().startswith(('help', 'man')):
-            tool_name = cmd.split()[-1]
-            if tool_name in system_commands:
-                tool_help = tool_manager.get_tool_help(tool_name)
-                if tool_help:
-                    console.print(f"\n[bold cyan]Help for {tool_name}:[/bold cyan]")
-                    if tool_help.get("source") == "man_page":
-                        console.print(f"[bold]Name:[/bold] {tool_help.get('name', 'N/A')}")
-                        console.print(f"[bold]Synopsis:[/bold] {tool_help.get('synopsis', 'N/A')}")
-                        console.print(f"[bold]Description:[/bold] {tool_help.get('description', 'N/A')}")
-                        if tool_help.get('options'):
-                            console.print(f"[bold]Options:[/bold] {tool_help['options']}")
-                        if tool_help.get('examples'):
-                            console.print(f"[bold]Examples:[/bold] {tool_help['examples']}")
-                    else:
-                        console.print(tool_help.get('help_text', 'No help text found.'))
-                else:
-                    console.print(f"[yellow]No help information available for {tool_name}[/yellow]")
-                executed_command_this_turn = True
+def terminal_command_selection(commands):
+    """
+    Presents a numbered menu in the terminal for the user to select a command.
+    Returns the selected command or None if cancelled.
+    """
+    if not commands:
+        return None
+    if len(commands) == 1:
+        return commands[0]
+    console.print("\n[bold yellow]Multiple valid commands were found. Please select which one to execute:[/bold yellow]")
+    for idx, cmd in enumerate(commands, 1):
+        console.print(f"  [cyan]{idx}[/cyan]: {cmd}")
+    while True:
+        try:
+            choice = input(f"Enter the number of the command to execute (1-{len(commands)}) or 'q' to cancel: ").strip()
+            if choice.lower() == 'q':
+                return None
+            if choice.isdigit() and 1 <= int(choice) <= len(commands):
+                return commands[int(choice)-1]
             else:
-                # If help is for an unknown command, ask to run it
-                confirm_and_run_command(cmd)
+                console.print("[red]Invalid selection. Please try again.[/red]")
+        except (EOFError, KeyboardInterrupt):
+            return None
+
+def execute_cmd(intent_analysis, cleaned_result, system_commands, tool_manager):
+    executed_command_this_turn = False  # Flag to avoid double execution
+    extracted_commands = cleaned_result.get('commands', [])
+    # Helper: is a command incomplete or just a tool name?
+    def is_incomplete(cmd):
+        if not cmd:
+            return True
+        cmd = cmd.strip()
+        return (
+            len(cmd.split()) == 1 or
+            '<' in cmd or '>' in cmd
+        )
+    # Filter out incomplete commands
+    valid_commands = [c for c in extracted_commands if not is_incomplete(c)]
+    # If none from cleaner, try intent_analysis
+    if not valid_commands and intent_analysis.get("command") and not is_incomplete(intent_analysis["command"]):
+        valid_commands = [intent_analysis["command"]]
+    # Let user select if multiple, or auto if one, or skip if none
+    cmd = terminal_command_selection(valid_commands)
+    print(f"Selected command for execution: {cmd}")
+    if cmd is None:
+        console.print("[yellow]No valid command selected (all were incomplete, had placeholders, or selection cancelled). Skipping execution.[/yellow]")
+        return
+    # Check if it's a help request (don't need confirmation for help)
+    if cmd.lower().startswith(('help', 'man')):
+        tool_name = cmd.split()[-1]
+        if tool_name in system_commands:
+            tool_help = tool_manager.get_tool_help(tool_name)
+            if tool_help:
+                console.print(f"\n[bold cyan]Help for {tool_name}:[/bold cyan]")
+                if tool_help.get("source") == "man_page":
+                    console.print(f"[bold]Name:[/bold] {tool_help.get('name', 'N/A')}")
+                    console.print(f"[bold]Synopsis:[/bold] {tool_help.get('synopsis', 'N/A')}")
+                    console.print(f"[bold]Description:[/bold] {tool_help.get('description', 'N/A')}")
+                    if tool_help.get('options'):
+                        console.print(f"[bold]Options:[/bold] {tool_help['options']}")
+                    if tool_help.get('examples'):
+                        console.print(f"[bold]Examples:[/bold] {tool_help['examples']}")
+                else:
+                    console.print(tool_help.get('help_text', 'No help text found.'))
+            else:
+                console.print(f"[yellow]No help information available for {tool_name}[/yellow]")
+            return
         else:
-            # Ask for confirmation for non-help commands
+            # If help is for an unknown command, ask to run it
             confirm_and_run_command(cmd)
+            return
+    # For all other commands, ask for confirmation
+    confirm_and_run_command(cmd)
 # === UTILITY FUNCTIONS ===
 
 # Note: The following functions have been moved to modules.engagement_manager
@@ -949,7 +1006,7 @@ def main():
     if llm is None:
         console.print("[red]Model initialization failed. Exiting.[/red]")
         # Attempt cleanup even if init failed
-        if 'gpu_manager' in globals() and gpu_manager is not None:
+        if not using_gemini and gpu_manager is not None:
              gpu_manager.cleanup()
         return # Exit main function gracefully
 
@@ -1128,9 +1185,9 @@ def main():
                 current_task=user_input,
                 base_prompt=PROMPT_TEMPLATE if user_input.lower().startswith("reason") else None,
                 reasoning_context=reasoning_result.get("reasoning", {}),
-                follow_up_questions=reasoning_result.get("follow_up_questions", []),
                 tool_context=None if not user_input.lower().startswith("reason") else 
-                    tool_manager.get_tool_context(reasoning_result.get("tool_name")) if reasoning_result.get("tool_name") else None
+                    tool_manager.get_tool_context(reasoning_result.get("tool_name")) if reasoning_result.get("tool_name") else None,
+                follow_up_questions=reasoning_result.get("follow_up_questions", [])
             )
             
             # Determine prompt type based on user input
@@ -1180,6 +1237,16 @@ def main():
                     if not clean_response:
                         clean_response = "I apologize, but I encountered an issue generating a response. Please try rephrasing your question."
                     
+                    # DIM command execution status if nothing was selected
+                    if clean_response:
+                        clean_response = clean_response.replace(
+                            "Selected command for execution: None",
+                            "[dim]Selected command for execution: None[/dim]"
+                        ).replace(
+                            "No valid command selected (all were incomplete, had placeholders, or selection cancelled). Skipping execution.",
+                            "[dim]No valid command selected (all were incomplete, had placeholders, or selection cancelled). Skipping execution.[/dim]"
+                        )
+
                     # Stop the timer thread and progress spinner before displaying response
                     timer_running = False
                     timer_thread.join(timeout=0.2)  # Wait for thread to finish
@@ -1200,7 +1267,7 @@ def main():
 
                 # Process any commands extracted by the response cleaner
                 
-                execute_cmd(intent_analysis,cleaned_result)
+                execute_cmd(intent_analysis, cleaned_result, system_commands, tool_manager)
                
                 
                     
@@ -1224,6 +1291,7 @@ def main():
                 
                 # Execute save in background to avoid blocking
                 executor.submit(save_history_in_background)
+                
         except KeyboardInterrupt:
             # Make sure to stop the timer if it exists in this scope
             if 'timer_running' in locals():

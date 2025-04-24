@@ -1,0 +1,43 @@
+{
+  "official_docs": [
+    {
+      "source": "security_advisories",
+      "details": {
+        "matches": [
+          "https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=nmap"
+        ],
+        "discrepancies": []
+      }
+    },
+    {
+      "source": "community_sources",
+      "details": {
+        "matches": [
+          "https://github.com/search?q=nmap&type=repositories",
+          "https://www.reddit.com/search/?q=nmap"
+        ],
+        "discrepancies": [
+          "https://stackoverflow.com/search?q=nmap"
+        ]
+      }
+    }
+  ],
+  "community_sources": [
+    {
+      "source": "man_pages",
+      "details": {
+        "matches": [],
+        "discrepancies": []
+      }
+    },
+    {
+      "source": "official_docs",
+      "details": {
+        "matches": [],
+        "discrepancies": [],
+        "source_url": "https://nmap.org/book/man.html"
+      }
+    }
+  ],
+  "last_updated": "2025-04-22T15:26:12.932102"
+}

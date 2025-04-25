@@ -77,6 +77,15 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
 
     def analyze(self, user_input, chat_memory: Optional[ChatMemory] = None):
         """Analyze user input for intent and context"""
+        # Detect follow-up question first
+        if self.is_followup_question(user_input, chat_memory):
+            return {
+                "intent": "followup_clarification",
+                "output": "This appears to be a follow-up question. Please clarify your request or provide more context so I can assist you accurately.",
+                "should_execute": False,
+                "requires_clarification": True
+            }
+        
         analysis = {
             "intent": "general_query",
             "command": None,
@@ -164,6 +173,20 @@ Assistant: "X is [explanation]. Would you like to see how to [related action]? J
                     analysis["requires_confirmation"] = True
 
         return analysis
+
+    def is_followup_question(self, user_input, chat_memory=None):
+        """Detect if the user input is a follow-up question requiring clarification."""
+        # Simple heuristic: if the question is short, vague, or refers to previous context
+        followup_keywords = ["what about", "and then", "next", "more info", "can you tell me more", "how about", "what else", "continue", "explain more", "details?"]
+        input_lower = user_input.lower().strip()
+        if len(input_lower.split()) <= 6 or any(kw in input_lower for kw in followup_keywords):
+            # If it looks like a follow-up, check if it refers to previous chat
+            if chat_memory and len(chat_memory) > 0:
+                return True
+        # Also, if it is a question without enough context
+        if re.match(r'^(what|how|why|when|where|who)\b', input_lower) and len(input_lower.split()) <= 7:
+            return True
+        return False
 
     @lru_cache(maxsize=128)
     def _determine_command(self, intent, query):

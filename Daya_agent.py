@@ -59,7 +59,6 @@ from modules.engagement_manager import extract_targets, suggest_attack_plan, eng
 from modules.reasoning_engine import ReasoningEngine
 from modules.tool_manager import ToolManager
 from modules.gpu_manager import GPUManager, is_gpu_available, get_gpu_memory
-from modules import execute_cmd
 
 # Conditionally import Llama-specific things if needed
 # if not USE_GEMINI: # <-- REMOVE THIS BLOCK
@@ -784,7 +783,8 @@ def confirm_and_run_command(cmd):
                         current_task=f'output:{output}',
                         base_prompt= None,
                         reasoning_context=analysis_result.get("reasoning", {}),
-                        follow_up_questions=analysis_result.get("follow_up_questions", []),
+                        follow_up_questions=f'Here are the follow up questions for inspiration\n'
+                        f'ask a follow up question in a natural way at the end of your response but do not answer or title it {analysis_result.get("follow_up_questions", [])}',
                         tool_context=None)
                         with Progress(
                             SpinnerColumn(spinner_name="dots"),
@@ -833,7 +833,7 @@ def confirm_and_run_command(cmd):
                             console.print(f"\n[bold magenta]┌──(DAYA)[/bold magenta]")
                             console.print(f"[bold magenta]└─>[/bold magenta] {clean_response}")
                             console.print() # Add an empty line after output for better readability
-                        execute_cmd(intent_analysis,cleaned_result, system_commands, tool_manager)
+                        execute_cmd(intent_analysis,cleaned_result)
                     else:
                         console.print("[yellow]No valid analysis received from Reasoning Engine.[/yellow]")
                 except Exception as e:
@@ -847,7 +847,7 @@ def confirm_and_run_command(cmd):
         console.print(f"\n[yellow]Command execution issue: {e}. Command execution skipped.[/yellow]")
 
 
-def execute_cmd(intent_analysis, cleaned_result, system_commands, tool_manager):
+def execute_cmd(intent_analysis,cleaned_result):
     executed_command_this_turn = False # Flag to avoid double execution
     # Prefer best cleaned command, fallback to intent_analysis["command"]
     extracted_commands = cleaned_result.get('commands', [])
@@ -868,9 +868,9 @@ def execute_cmd(intent_analysis, cleaned_result, system_commands, tool_manager):
         cmd = intent_analysis["command"]
     else:
         cmd = None
-    print(f"Selected command for execution: {cmd}")
+    console.print(f"[dim]Selected command for execution: {cmd}[/dim]")
     if cmd is None:
-        console.print("[yellow]No valid command to execute (all were incomplete or had placeholders). Skipping execution.[/yellow]")
+        console.print("[dim][yellow]No valid command to execute (all were incomplete or had placeholders). Skipping execution.[/yellow][/dim]")
         return
     # Check if it's a help request (don't need confirmation for help)
     if cmd.lower().startswith(('help', 'man')):
@@ -923,7 +923,7 @@ def terminal_command_selection(commands):
         except (EOFError, KeyboardInterrupt):
             return None
 
-def execute_cmd(intent_analysis, cleaned_result, system_commands, tool_manager):
+def execute_cmd(intent_analysis, cleaned_result):
     executed_command_this_turn = False  # Flag to avoid double execution
     extracted_commands = cleaned_result.get('commands', [])
     # Helper: is a command incomplete or just a tool name?
@@ -942,9 +942,9 @@ def execute_cmd(intent_analysis, cleaned_result, system_commands, tool_manager):
         valid_commands = [intent_analysis["command"]]
     # Let user select if multiple, or auto if one, or skip if none
     cmd = terminal_command_selection(valid_commands)
-    print(f"Selected command for execution: {cmd}")
+    console.print(f"[dim][yellow]Selected command for execution: {cmd}[/yellow][/dim]")
     if cmd is None:
-        console.print("[yellow]No valid command selected (all were incomplete, had placeholders, or selection cancelled). Skipping execution.[/yellow]")
+        console.print("[dim][yellow]No valid command selected (all were incomplete, had placeholders, or selection cancelled). Skipping execution.[/yellow][/dim]")
         return
     # Check if it's a help request (don't need confirmation for help)
     if cmd.lower().startswith(('help', 'man')):
@@ -1187,7 +1187,8 @@ def main():
                 reasoning_context=reasoning_result.get("reasoning", {}),
                 tool_context=None if not user_input.lower().startswith("reason") else 
                     tool_manager.get_tool_context(reasoning_result.get("tool_name")) if reasoning_result.get("tool_name") else None,
-                follow_up_questions=reasoning_result.get("follow_up_questions", [])
+                follow_up_questions=f'Here are the follow up questions for inspiration\n'
+                f'ask a follow up question in a natural way at the end of your response but do not answer or title it {reasoning_result.get("follow_up_questions", [])}'
             )
             
             # Determine prompt type based on user input
@@ -1267,7 +1268,7 @@ def main():
 
                 # Process any commands extracted by the response cleaner
                 
-                execute_cmd(intent_analysis, cleaned_result, system_commands, tool_manager)
+                execute_cmd(intent_analysis,cleaned_result)
                
                 
                     
